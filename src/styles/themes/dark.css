@@ -1,0 +1,65 @@
+/* Dark theme variables and styles */
+:root {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d30;
+  --border-color: #464647;
+  --text-primary: #cccccc;
+  --text-secondary: #8c8c8c;
+  --accent-color: #007acc;
+  --accent-hover: #1177bb;
+  --error-color: #f14c4c;
+  --warning-color: #ffcc02;
+  --success-color: #89d185;
+}
+
+.theme-dark {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.theme-dark .panel {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.theme-dark .button-primary {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.theme-dark .button-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.theme-dark .button-secondary {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.theme-dark .button-secondary:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.theme-dark .input {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.theme-dark .input:focus {
+  border-color: var(--accent-color);
+  outline: none;
+}
