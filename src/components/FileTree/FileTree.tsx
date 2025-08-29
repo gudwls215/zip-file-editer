@@ -36,14 +36,9 @@ const FileNode: React.FC<FileNodeProps> = ({ node, level, onFileClick, onFolderT
     
     const ext = node.name.split('.').pop()?.toLowerCase() || '';
     switch (ext) {
-      case 'js':
-      case 'jsx': return '📜';
-      case 'ts':
-      case 'tsx': return '📘';
       case 'html': return '🌐';
       case 'css': return '🎨';
-      case 'json': return '📋';
-      case 'md': return '📝';
+      case 'scss': case 'sass': case 'less': return '🎨';
       default: return '📄';
     }
   };
@@ -116,55 +111,96 @@ export const FileTree: React.FC = () => {
   }, [fileTree, setFileTree]);
 
   const handleFileClick = useCallback(async (path: string) => {
-    if (!zipFile) return;
+    console.log('File clicked:', path);
+    
+    if (!zipFile) {
+      console.log('No zip file loaded');
+      return;
+    }
 
     try {
       const file = zipFile.files[path];
-      if (!file || file.dir) return;
+      if (!file || file.dir) {
+        console.log('Invalid file or directory:', path);
+        return;
+      }
 
       const fileName = path.split('/').pop() || path;
+      console.log('Processing file:', fileName);
       
-      if (isBinaryFile(fileName)) {
-        if (isImageFile(fileName)) {
-          // For images, we'll create a special tab that shows the image
-          const blob = await file.async('blob');
-          const imageUrl = URL.createObjectURL(blob);
-          
-          addTab({
-            id: path,
-            name: fileName,
-            path: path,
-            content: imageUrl, // Store image URL as content
-            language: 'image',
-            isDirty: false
-          });
-        } else {
-          // For other binary files, show a message
-          addTab({
-            id: path,
-            name: fileName,
-            path: path,
-            content: '// Binary file - cannot be edited',
-            language: 'plaintext',
-            isDirty: false
-          });
-        }
-      } else {
-        // For text files, load the content
-        const content = await file.async('string');
-        const language = getFileLanguage(fileName);
+      // Determine file category
+      const isImage = isImageFile(fileName);
+      const isBinary = isBinaryFile(fileName);
+      
+      if (isBinary && !isImage) {
+        console.log('Binary file detected (non-image)');
+        // For non-image binary files, show a message
+        addTab({
+          id: path,
+          name: fileName,
+          path: path,
+          content: `// Binary file: ${fileName}\n// This file cannot be edited as text.\n// File type: ${fileName.split('.').pop()?.toUpperCase() || 'Unknown'}`,
+          language: 'plaintext',
+          isDirty: false
+        });
+      } else if (isImage) {
+        console.log('Image file detected');
+        // For images, create a special tab that shows the image
+        const blob = await file.async('blob');
+        const imageUrl = URL.createObjectURL(blob);
         
         addTab({
           id: path,
           name: fileName,
           path: path,
-          content: content,
-          language: language,
+          content: imageUrl, // Store image URL as content
+          language: 'image',
           isDirty: false
         });
+      } else {
+        console.log('Text file detected, loading content...');
+        // For text files (including SVG), load the content
+        try {
+          const content = await file.async('string');
+          const language = getFileLanguage(fileName);
+          
+          console.log('File content loaded, length:', content.length, 'language:', language);
+          
+          addTab({
+            id: path,
+            name: fileName,
+            path: path,
+            content: content,
+            language: language,
+            isDirty: false
+          });
+          
+          console.log('Tab added successfully');
+        } catch (textError) {
+          console.log('Failed to load as text, treating as binary:', textError);
+          // If text loading fails, treat as binary
+          addTab({
+            id: path,
+            name: fileName,
+            path: path,
+            content: `// Error loading file: ${fileName}\n// This file might be corrupted or in an unsupported format.`,
+            language: 'plaintext',
+            isDirty: false
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading file:', error);
+      // Show error in editor
+      const fileName = path.split('/').pop() || path;
+      addTab({
+        id: path,
+        name: fileName,
+        path: path,
+        content: `// Error loading file: ${fileName}\n// ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+        language: 'plaintext',
+        isDirty: false
+      });
     }
   }, [zipFile, addTab]);
 

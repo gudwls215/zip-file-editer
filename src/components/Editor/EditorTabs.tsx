@@ -137,27 +137,14 @@ export const EditorTabs: React.FC = () => {
 };
 
 function getFileIcon(fileName: string, language: string): string {
-  if (language === 'image') return '🖼️';
+  if (language === 'image') return '◈';
   
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   
   switch (ext) {
-    case 'js':
-    case 'jsx': return '📜';
-    case 'ts':
-    case 'tsx': return '📘';
-    case 'html': return '🌐';
-    case 'css':
-    case 'scss':
-    case 'sass': return '🎨';
-    case 'json': return '📋';
-    case 'md': return '📝';
-    case 'py': return '🐍';
-    case 'java': return '☕';
-    case 'php': return '🐘';
-    case 'rb': return '💎';
-    case 'go': return '🐹';
-    case 'rs': return '🦀';
-    default: return '📄';
+      case 'html': return '🌐';
+      case 'css': return '🎨';
+      case 'scss': case 'sass': case 'less': return '🎨';
+      default: return '📄';
   }
 }

@@ -1,46 +1,23 @@
 import React, { useRef, useEffect } from 'react';
+// Ensure Monaco workers are wired before any editor actions
+import '../../setup/monacoWorkers';
 import * as monaco from 'monaco-editor';
+import Editor, { useMonaco } from '@monaco-editor/react';
 import { useZipStore } from '../../store/zipStore';
 
 export const MonacoEditor: React.FC = () => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const { tabs, activeTabId, updateTabContent } = useZipStore();
+  const monacoInstance = useMonaco();
 
   const activeTab = tabs.find(tab => tab.id === activeTabId);
+  
+  // Debug logging
+  console.log('MonacoEditor render - tabs:', tabs.length, 'activeTabId:', activeTabId, 'activeTab:', activeTab?.name);
 
-  // Initialize Monaco Editor
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Configure Monaco Editor
-    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: true,
-      noSyntaxValidation: false
-    });
-
-    // Create editor instance
-    const editor = monaco.editor.create(containerRef.current, {
-      theme: 'vs-dark',
-      fontSize: 13,
-      fontFamily: '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
-      lineNumbers: 'on',
-      minimap: { enabled: true },
-      automaticLayout: true,
-      scrollBeyondLastLine: false,
-      wordWrap: 'on',
-      folding: true,
-      glyphMargin: true,
-      renderWhitespace: 'selection',
-      tabSize: 2,
-      insertSpaces: true,
-      mouseWheelZoom: true,
-      cursorBlinking: 'blink',
-      cursorSmoothCaretAnimation: 'on',
-      smoothScrolling: true
-    });
-
+  function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor) {
     editorRef.current = editor;
+    console.log('Monaco Editor initialized successfully');
 
     // Setup keyboard shortcuts
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -58,48 +35,29 @@ export const MonacoEditor: React.FC = () => {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {
       editor.trigger('keyboard', 'undo', {});
     });
+  }
 
-    // Setup content change handler
-    const handleContentChange = () => {
-      if (!activeTab) return;
-      
-      const content = editor.getValue();
-      if (content !== activeTab.content) {
-        updateTabContent(activeTab.id, content);
-      }
-    };
+  function handleEditorChange(value: string | undefined) {
+    if (activeTab && value !== undefined && value !== activeTab.content) {
+      updateTabContent(activeTab.id, value);
+    }
+  }
 
-    const contentChangeDisposable = editor.onDidChangeModelContent(handleContentChange);
-
-    return () => {
-      contentChangeDisposable.dispose();
-      editor.dispose();
-    };
-  }, []);
-
-  // Update editor content when active tab changes
+  // Update editor language when active tab changes
   useEffect(() => {
-    if (!editorRef.current || !activeTab) return;
-
-    const editor = editorRef.current;
-    
-    if (activeTab.language === 'image') {
-      // For images, we'll hide the editor and show the image
-      return;
+    if (monacoInstance && activeTab && activeTab.language !== 'image') {
+      const model = editorRef.current?.getModel();
+      if (model) {
+        try {
+          monacoInstance.editor.setModelLanguage(model, activeTab.language);
+          console.log('Language set to:', activeTab.language);
+        } catch (langError) {
+          console.warn('Failed to set language:', activeTab.language, langError);
+          monacoInstance.editor.setModelLanguage(model, 'plaintext');
+        }
+      }
     }
-
-    // Set language
-    const model = editor.getModel();
-    if (model) {
-      monaco.editor.setModelLanguage(model, activeTab.language);
-    }
-
-    // Set content without triggering change events
-    const currentContent = editor.getValue();
-    if (currentContent !== activeTab.content) {
-      editor.setValue(activeTab.content);
-    }
-  }, [activeTab]);
+  }, [activeTab, monacoInstance]);
 
   if (!activeTab) {
     return (
@@ -169,13 +127,31 @@ export const MonacoEditor: React.FC = () => {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div 
-        ref={containerRef} 
-        style={{ 
-          width: '100%', 
-          height: '100%',
-          backgroundColor: '#1e1e1e'
-        }} 
+      <Editor
+        height="calc(100% - 22px)"
+        language={activeTab.language}
+        value={activeTab.content}
+        theme="vs-dark"
+        onMount={handleEditorDidMount}
+        onChange={handleEditorChange}
+        options={{
+          fontSize: 13,
+          fontFamily: '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
+          lineNumbers: 'on',
+          minimap: { enabled: false },
+          automaticLayout: true,
+          scrollBeyondLastLine: false,
+          wordWrap: 'on',
+          folding: true,
+          glyphMargin: true,
+          renderWhitespace: 'selection',
+          tabSize: 2,
+          insertSpaces: true,
+          mouseWheelZoom: true,
+          cursorBlinking: 'blink',
+          cursorSmoothCaretAnimation: 'off',
+          smoothScrolling: false
+        }}
       />
       
       {/* Status bar for current file */}
@@ -202,6 +178,9 @@ export const MonacoEditor: React.FC = () => {
             • Modified
           </span>
         )}
+        <span style={{ marginLeft: 'auto', marginRight: '12px', opacity: 0.6 }}>
+          Editor Ready: {editorRef.current ? 'Yes' : 'No'}
+        </span>
       </div>
     </div>
   );
