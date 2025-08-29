@@ -1,4 +1,4 @@
-import type { FileItem, FileTreeNode } from '../types';
+import type { FileItem, FileTreeNode, FileNode } from '../types';
 
 export const buildFileTree = (files: FileItem[]): FileTreeNode[] => {
   const rootNodes: FileTreeNode[] = [];
@@ -88,4 +88,42 @@ export const toggleNodeExpansion = (nodes: FileTreeNode[], id: string): FileTree
     }
     return node;
   });
+};
+
+export const sortFileTree = (node: FileNode): FileNode => {
+  if (node.type === 'file' || !node.children) {
+    return node;
+  }
+
+  const sortedChildren = [...node.children].sort((a, b) => {
+    if (a.type !== b.type) {
+      return a.type === 'directory' ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, undefined, { numeric: true });
+  });
+
+  return {
+    ...node,
+    children: sortedChildren.map(sortFileTree)
+  };
+};
+
+export const findNodeByPath = (root: FileNode | null, path: string): FileNode | null => {
+  if (!root) return null;
+  if (root.path === path) return root;
+  
+  if (root.children) {
+    for (const child of root.children) {
+      const found = findNodeByPath(child, path);
+      if (found) return found;
+    }
+  }
+  
+  return null;
+};
+
+export const countFiles = (node: FileNode): number => {
+  if (node.type === 'file') return 1;
+  if (!node.children) return 0;
+  return node.children.reduce((acc, child) => acc + countFiles(child), 0);
 };

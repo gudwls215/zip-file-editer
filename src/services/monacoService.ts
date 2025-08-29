@@ -1,8 +1,10 @@
-import { getLanguageFromExtension, getFileExtension } from '../utils/fileUtils';
+import * as monaco from 'monaco-editor';
+import { getLanguageFromFilename } from '../utils/fileUtils';
 
 export class MonacoService {
   private static instance: MonacoService;
-  private monaco: any = null;
+  private editor: monaco.editor.IStandaloneCodeEditor | null = null;
+  private models: Map<string, monaco.editor.ITextModel> = new Map();
 
   static getInstance(): MonacoService {
     if (!MonacoService.instance) {
@@ -12,59 +14,85 @@ export class MonacoService {
   }
 
   async initializeMonaco(): Promise<void> {
-    if (this.monaco) return;
-
-    try {
-      // Import Monaco Editor
-      const monacoModule = await import('monaco-editor');
-      this.monaco = monacoModule.default || monacoModule;
-
-      // Configure Monaco environment
-      this.configureMonaco();
-    } catch (error) {
-      console.error('Failed to initialize Monaco Editor:', error);
-      throw new Error('Failed to load Monaco Editor');
-    }
+    // Monaco is already loaded via vite-plugin-monaco-editor
+    this.configureMonaco();
   }
 
   private configureMonaco(): void {
-    if (!this.monaco) return;
-
     // Set theme
-    this.monaco.editor.setTheme('vs-dark');
+    monaco.editor.setTheme('vs-dark');
 
     // Configure language features
-    this.monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-      target: this.monaco.languages.typescript.ScriptTarget.Latest,
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.Latest,
       allowNonTsExtensions: true,
-      moduleResolution: this.monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: this.monaco.languages.typescript.ModuleKind.CommonJS,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.CommonJS,
       noEmit: true,
       esModuleInterop: true,
-      jsx: this.monaco.languages.typescript.JsxEmit.React,
+      jsx: monaco.languages.typescript.JsxEmit.React,
       reactNamespace: 'React',
       allowJs: true,
       typeRoots: ['node_modules/@types']
     });
 
     // Disable validation for JavaScript files
-    this.monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
       noSemanticValidation: true,
       noSyntaxValidation: false
     });
   }
 
-  getLanguageFromFilename(filename: string): string {
-    const extension = getFileExtension(filename);
-    return getLanguageFromExtension(extension);
+  initEditor(container: HTMLElement, options?: monaco.editor.IStandaloneEditorConstructionOptions): monaco.editor.IStandaloneCodeEditor {
+    this.editor = monaco.editor.create(container, {
+      theme: 'vs-dark',
+      automaticLayout: true,
+      minimap: { enabled: true },
+      fontSize: 14,
+      wordWrap: 'on',
+      scrollBeyondLastLine: false,
+      renderWhitespace: 'selection',
+      ...options
+    });
+
+    return this.editor;
   }
 
-  createEditor(container: HTMLElement, value: string, language: string): any {
-    if (!this.monaco) {
-      throw new Error('Monaco Editor not initialized');
+  createModel(path: string, content: string): monaco.editor.ITextModel {
+    const existing = this.models.get(path);
+    if (existing) {
+      existing.setValue(content);
+      return existing;
     }
 
-    return this.monaco.editor.create(container, {
+    const language = getLanguageFromFilename(path);
+    const model = monaco.editor.createModel(
+      content,
+      language,
+      monaco.Uri.file(path)
+    );
+
+    this.models.set(path, model);
+    return model;
+  }
+
+  setModel(path: string, content: string): void {
+    if (!this.editor) return;
+    
+    const model = this.createModel(path, content);
+    this.editor.setModel(model);
+  }
+
+  getModel(path: string): monaco.editor.ITextModel | undefined {
+    return this.models.get(path);
+  }
+
+  getLanguageFromFilename(filename: string): string {
+    return getLanguageFromFilename(filename);
+  }
+
+  createEditor(container: HTMLElement, value: string, language: string): monaco.editor.IStandaloneCodeEditor {
+    return monaco.editor.create(container, {
       value,
       language,
       theme: 'vs-dark',
@@ -80,17 +108,27 @@ export class MonacoService {
   }
 
   setTheme(theme: string): void {
-    if (!this.monaco) return;
-    this.monaco.editor.setTheme(theme);
+    monaco.editor.setTheme(theme);
   }
 
-  disposeEditor(editor: any): void {
+  disposeEditor(editor: monaco.editor.IStandaloneCodeEditor): void {
     if (editor && typeof editor.dispose === 'function') {
       editor.dispose();
     }
   }
 
+  dispose(): void {
+    this.models.forEach(model => model.dispose());
+    this.models.clear();
+    this.editor?.dispose();
+    this.editor = null;
+  }
+
+  getEditor(): monaco.editor.IStandaloneCodeEditor | null {
+    return this.editor;
+  }
+
   isInitialized(): boolean {
-    return this.monaco !== null;
+    return true; // Monaco is always available via plugin
   }
 }

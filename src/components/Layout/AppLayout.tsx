@@ -1,24 +1,10 @@
 import React from 'react';
-import { FileTree } from '../FileTree';
-import { EditorContainer } from '../Editor';
-import { FileUploadArea, DownloadButton } from '../FileUpload';
-import { useFileSystem } from '../../hooks/useFileSystem';
-import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { FileUploadArea } from '../FileUpload/FileUploadArea';
+import { FileTree } from '../FileTree/FileTree';
+import { EditorTabs } from '../Editor/EditorTabs';
+import { MonacoEditor } from '../Editor/MonacoEditor';
 
-export const AppLayout: React.FC = () => {
-  const { files, error, clearAllFiles } = useFileSystem();
-
-  useKeyboardShortcuts({
-    onSave: () => {
-      // Save current file
-      console.log('Save shortcut triggered');
-    },
-    onOpen: () => {
-      // Open file dialog
-      console.log('Open shortcut triggered');
-    },
-  });
-
+const AppLayout: React.FC = () => {
   return (
     <div style={{
       height: '100vh',
@@ -26,90 +12,102 @@ export const AppLayout: React.FC = () => {
       flexDirection: 'column',
       backgroundColor: '#1e1e1e',
       color: '#cccccc',
-      fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+      fontFamily: '"Segoe UI", "Segoe WPC", "Segoe UI Symbol", "Helvetica Neue", sans-serif',
+      fontSize: '13px'
     }}>
-      {/* Header */}
+      {/* Title Bar */}
       <div style={{
-        height: '40px',
-        backgroundColor: '#2d2d30',
+        height: '35px',
+        background: 'linear-gradient(to bottom, #3c3c3c, #2d2d30)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         borderBottom: '1px solid #464647',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 16px',
+        fontSize: '14px',
+        fontWeight: '400',
+        letterSpacing: '0.5px'
       }}>
-        <h1 style={{
-          margin: 0,
-          fontSize: '16px',
-          fontWeight: 'normal',
-        }}>
-          ZIP File Editor
-        </h1>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <DownloadButton />
-          {files.length > 0 && (
-            <button
-              onClick={clearAllFiles}
-              style={{
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-              }}
-            >
-              Clear All
-            </button>
-          )}
-        </div>
+        Zip File Editor
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div style={{
-          backgroundColor: '#f14c4c',
-          color: 'white',
-          padding: '8px 16px',
-          fontSize: '14px',
-        }}>
-          Error: {error}
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex' }}>
-        {files.length === 0 ? (
-          /* Upload Area */
-          <FileUploadArea />
-        ) : (
-          /* File Explorer and Editor */
-          <>
-            <div style={{
-              width: '300px',
-              borderRight: '1px solid #464647',
-              backgroundColor: '#252526',
-            }}>
-              <FileTree />
-            </div>
-            <EditorContainer />
-          </>
-        )}
-      </div>
-
-      {/* Status Bar */}
+      {/* File Upload Section */}
       <div style={{
-        height: '24px',
-        backgroundColor: '#007acc',
+        height: '120px',
+        backgroundColor: '#252526',
+        borderBottom: '1px solid #464647',
+        padding: '12px',
         display: 'flex',
-        alignItems: 'center',
-        padding: '0 16px',
-        fontSize: '12px',
-        color: 'white',
+        alignItems: 'center'
       }}>
-        {files.length > 0 && `${files.length} file(s) loaded`}
+        <FileUploadArea />
+      </div>
+
+      {/* Main Content Area */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        overflow: 'hidden'
+      }}>
+        {/* Left Sidebar - File Tree */}
+        <div style={{
+          width: '300px',
+          backgroundColor: '#252526',
+          borderRight: '1px solid #464647',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '35px',
+            backgroundColor: '#2d2d30',
+            display: 'flex',
+            alignItems: 'center',
+            paddingLeft: '12px',
+            borderBottom: '1px solid #464647',
+            fontSize: '11px',
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: '0.8px',
+            color: '#a0a0a0'
+          }}>
+            File Tree
+          </div>
+          <div style={{
+            flex: 1,
+            overflow: 'auto'
+          }}>
+            <FileTree />
+          </div>
+        </div>
+
+        {/* Right Content Area */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
+          {/* Editor Tabs */}
+          <div style={{
+            minHeight: '35px',
+            backgroundColor: '#2d2d30',
+            borderBottom: '1px solid #464647'
+          }}>
+            <EditorTabs />
+          </div>
+
+          {/* Monaco Editor Area */}
+          <div style={{
+            flex: 1,
+            backgroundColor: '#1e1e1e',
+            position: 'relative'
+          }}>
+            <MonacoEditor />
+          </div>
+        </div>
       </div>
     </div>
   );
 };
+
+export default AppLayout;

@@ -1,4 +1,4 @@
-import { AppLayout } from './components/Layout';
+import AppLayout from './components/Layout/AppLayout';
 import './styles/global.css';
 import './styles/themes/dark.css';
 

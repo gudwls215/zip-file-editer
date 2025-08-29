@@ -16,8 +16,16 @@ export interface MonacoEditorProps {
 
 export interface EditorTab {
   id: string;
-  name: string;
   path: string;
-  isModified: boolean;
-  language: string;
+  name: string;
+  content: string | ArrayBuffer;
+  language?: string;
+  modified: boolean;
+  active: boolean;
+  viewState?: any;
+}
+
+export interface MonacoInstance {
+  editor: any;
+  models: Map<string, any>;
 }
