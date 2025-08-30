@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { useZipStore, getFileLanguage, isBinaryFile, isImageFile } from '../../store/zipStore';
+import { useEditorStore } from '../../store/editorStore';
 
 interface FileNodeProps {
   node: {
@@ -91,7 +92,8 @@ const FileNode: React.FC<FileNodeProps> = ({ node, level, onFileClick, onFolderT
 };
 
 export const FileTree: React.FC = () => {
-  const { fileTree, setFileTree, zipFile, addTab } = useZipStore();
+  const { fileTree, setFileTree, zipFile } = useZipStore();
+  const { addTab } = useEditorStore();
 
   const handleFolderToggle = useCallback((path: string) => {
     const toggleNode = (nodes: any[]): any[] => {
@@ -112,6 +114,7 @@ export const FileTree: React.FC = () => {
 
   const handleFileClick = useCallback(async (path: string) => {
     console.log('File clicked:', path);
+    console.log('EditorStore addTab function:', typeof addTab);
     
     if (!zipFile) {
       console.log('No zip file loaded');
@@ -136,12 +139,10 @@ export const FileTree: React.FC = () => {
         console.log('Binary file detected (non-image)');
         // For non-image binary files, show a message
         addTab({
-          id: path,
           name: fileName,
           path: path,
           content: `// Binary file: ${fileName}\n// This file cannot be edited as text.\n// File type: ${fileName.split('.').pop()?.toUpperCase() || 'Unknown'}`,
-          language: 'plaintext',
-          isDirty: false
+          language: 'plaintext'
         });
       } else if (isImage) {
         console.log('Image file detected');
@@ -150,12 +151,10 @@ export const FileTree: React.FC = () => {
         const imageUrl = URL.createObjectURL(blob);
         
         addTab({
-          id: path,
           name: fileName,
           path: path,
           content: imageUrl, // Store image URL as content
-          language: 'image',
-          isDirty: false
+          language: 'image'
         });
       } else {
         console.log('Text file detected, loading content...');
@@ -167,12 +166,10 @@ export const FileTree: React.FC = () => {
           console.log('File content loaded, length:', content.length, 'language:', language);
           
           addTab({
-            id: path,
             name: fileName,
             path: path,
             content: content,
-            language: language,
-            isDirty: false
+            language: language
           });
           
           console.log('Tab added successfully');
@@ -180,12 +177,10 @@ export const FileTree: React.FC = () => {
           console.log('Failed to load as text, treating as binary:', textError);
           // If text loading fails, treat as binary
           addTab({
-            id: path,
             name: fileName,
             path: path,
             content: `// Error loading file: ${fileName}\n// This file might be corrupted or in an unsupported format.`,
-            language: 'plaintext',
-            isDirty: false
+            language: 'plaintext'
           });
         }
       }
@@ -194,12 +189,10 @@ export const FileTree: React.FC = () => {
       // Show error in editor
       const fileName = path.split('/').pop() || path;
       addTab({
-        id: path,
         name: fileName,
         path: path,
         content: `// Error loading file: ${fileName}\n// ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
-        language: 'plaintext',
-        isDirty: false
+        language: 'plaintext'
       });
     }
   }, [zipFile, addTab]);

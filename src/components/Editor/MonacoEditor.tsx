@@ -1,19 +1,60 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 // Ensure Monaco workers are wired before any editor actions
 import '../../setup/monacoWorkers';
 import * as monaco from 'monaco-editor';
 import Editor, { useMonaco } from '@monaco-editor/react';
-import { useZipStore } from '../../store/zipStore';
+import { useEditorStore } from '../../store/editorStore';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 export const MonacoEditor: React.FC = () => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const { tabs, activeTabId, updateTabContent } = useZipStore();
+  const { 
+    getActiveTab, 
+    updateTabContent, 
+    theme, 
+    fontSize, 
+    wordWrap, 
+    minimap,
+    markTabSaved,
+    removeTab
+  } = useEditorStore();
   const monacoInstance = useMonaco();
 
-  const activeTab = tabs.find(tab => tab.id === activeTabId);
+  const activeTab = getActiveTab();
   
   // Debug logging
-  console.log('MonacoEditor render - tabs:', tabs.length, 'activeTabId:', activeTabId, 'activeTab:', activeTab?.name);
+  console.log('MonacoEditor render - activeTab:', activeTab?.name);
+
+  const handleSave = useCallback(() => {
+    if (activeTab) {
+      console.log('Saving tab:', activeTab.name);
+      markTabSaved(activeTab.id);
+      // Here you would implement actual save logic
+    }
+  }, [activeTab, markTabSaved]);
+
+  const handleCloseTab = useCallback(() => {
+    if (activeTab) {
+      if (activeTab.isDirty) {
+        const shouldClose = window.confirm(
+          `${activeTab.name} has unsaved changes. Do you want to close it anyway?`
+        );
+        if (!shouldClose) return;
+      }
+      removeTab(activeTab.id);
+    }
+  }, [activeTab, removeTab]);
+
+  useKeyboardShortcuts({
+    onSave: handleSave,
+    onCloseTab: handleCloseTab,
+    onSearch: () => {
+      editorRef.current?.getAction('actions.find')?.run();
+    },
+    onReplace: () => {
+      editorRef.current?.getAction('editor.action.startFindReplaceAction')?.run();
+    }
+  });
 
   function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor) {
     editorRef.current = editor;
@@ -21,8 +62,7 @@ export const MonacoEditor: React.FC = () => {
 
     // Setup keyboard shortcuts
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      console.log('Save shortcut triggered');
-      // Save functionality can be added here
+      handleSave();
     });
 
     editor.addCommand(
@@ -35,13 +75,17 @@ export const MonacoEditor: React.FC = () => {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {
       editor.trigger('keyboard', 'undo', {});
     });
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => {
+      handleCloseTab();
+    });
   }
 
-  function handleEditorChange(value: string | undefined) {
+  const handleEditorChange = useCallback((value: string | undefined) => {
     if (activeTab && value !== undefined && value !== activeTab.content) {
       updateTabContent(activeTab.id, value);
     }
-  }
+  }, [activeTab, updateTabContent]);
 
   // Update editor language when active tab changes
   useEffect(() => {
@@ -58,6 +102,20 @@ export const MonacoEditor: React.FC = () => {
       }
     }
   }, [activeTab, monacoInstance]);
+
+  // Warn before unload if there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasUnsaved = useEditorStore.getState().hasUnsavedChanges();
+      if (hasUnsaved) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   if (!activeTab) {
     return (
@@ -131,17 +189,17 @@ export const MonacoEditor: React.FC = () => {
         height="calc(100% - 22px)"
         language={activeTab.language}
         value={activeTab.content}
-        theme="vs-dark"
+        theme={theme}
         onMount={handleEditorDidMount}
         onChange={handleEditorChange}
         options={{
-          fontSize: 13,
+          fontSize,
           fontFamily: '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
           lineNumbers: 'on',
-          minimap: { enabled: false },
+          minimap: { enabled: minimap },
           automaticLayout: true,
           scrollBeyondLastLine: false,
-          wordWrap: 'on',
+          wordWrap: wordWrap ? 'on' : 'off',
           folding: true,
           glyphMargin: true,
           renderWhitespace: 'selection',
