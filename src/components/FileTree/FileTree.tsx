@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import addFileIcon from "../../assets/add_file.svg";
 import addFolderIcon from "../../assets/add_folder.svg";
+import deleteIcon from "../../assets/delete.svg";
 import {
   useZipStore,
   getFileLanguage,
@@ -151,14 +152,17 @@ const FileNode: React.FC<FileNodeProps> = ({
               style={{
                 background: "transparent",
                 border: "none",
-                color: "#f48771",
                 cursor: "pointer",
-                fontSize: 12,
-                padding: "2px 4px",
+                padding: 0,
               }}
               onClick={() => onDelete(node.path, true)}
             >
-              🗑️
+              <img
+                src={deleteIcon}
+                alt="delete_folder"
+                width={16}
+                height={16}
+              />
             </button>
           </span>
         ) : (
@@ -168,14 +172,12 @@ const FileNode: React.FC<FileNodeProps> = ({
               style={{
                 background: "transparent",
                 border: "none",
-                color: "#f48771",
                 cursor: "pointer",
-                fontSize: 12,
-                padding: "2px 4px",
+                padding: 0,
               }}
               onClick={() => onDelete(node.path, false)}
             >
-              🗑️
+              <img src={deleteIcon} alt="delete_file" width={16} height={16} />
             </button>
           </span>
         )}
