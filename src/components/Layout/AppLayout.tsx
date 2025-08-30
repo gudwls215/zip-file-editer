@@ -1,8 +1,7 @@
 import React from 'react';
 import { FileUploadArea } from '../FileUpload/FileUploadArea';
 import { FileTree } from '../FileTree/FileTree';
-import { EditorTabs } from '../Editor/EditorTabs';
-import { MonacoEditor } from '../Editor/MonacoEditor';
+import { EditorContainer } from '../Editor/EditorContainer';
 
 const AppLayout: React.FC = () => {
   return (
@@ -80,30 +79,14 @@ const AppLayout: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Content Area */}
+        {/* Right Content Area - Integrated Editor */}
         <div style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden'
         }}>
-          {/* Editor Tabs */}
-          <div style={{
-            minHeight: '35px',
-            backgroundColor: '#2d2d30',
-            borderBottom: '1px solid #464647'
-          }}>
-            <EditorTabs />
-          </div>
-
-          {/* Monaco Editor Area */}
-          <div style={{
-            flex: 1,
-            backgroundColor: '#1e1e1e',
-            position: 'relative'
-          }}>
-            <MonacoEditor />
-          </div>
+          <EditorContainer />
         </div>
       </div>
     </div>

@@ -26,6 +26,8 @@ interface ZipStore {
   fileName: string | null;
   originalBuffer: ArrayBuffer | null;
   fileTree: FileNode[];
+  // Saved changes snapshot (persisted on Ctrl+S)
+  savedChanges: Record<string, string>;
   
   // Editor state
   tabs: EditorTab[];
@@ -44,6 +46,10 @@ interface ZipStore {
   updateTabContent: (tabId: string, content: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  // Saved changes actions
+  setSavedChange: (path: string, content: string) => void;
+  removeSavedChange: (path: string) => void;
+  clearSavedChanges: () => void;
   reset: () => void;
 }
 
@@ -53,6 +59,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   fileName: null,
   originalBuffer: null,
   fileTree: [],
+  savedChanges: {},
   tabs: [],
   activeTabId: null,
   isLoading: false,
@@ -60,7 +67,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
 
   // Actions
   setZipData: ({ zipFile, fileName, originalBuffer }) => {
-    set({ zipFile, fileName, originalBuffer, error: null });
+    set({ zipFile, fileName, originalBuffer, error: null, savedChanges: {} });
     
     // Build file tree
     const tree = buildFileTree(zipFile);
@@ -110,11 +117,25 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
   
+  // Saved changes actions
+  setSavedChange: (path, content) => {
+    set((state) => ({ savedChanges: { ...state.savedChanges, [path]: content } }));
+  },
+  removeSavedChange: (path) => {
+    const { savedChanges } = get();
+    if (path in savedChanges) {
+      const { [path]: _, ...rest } = savedChanges;
+      set({ savedChanges: rest });
+    }
+  },
+  clearSavedChanges: () => set({ savedChanges: {} }),
+  
   reset: () => set({
     zipFile: null,
     fileName: null,
     originalBuffer: null,
     fileTree: [],
+    savedChanges: {},
     tabs: [],
     activeTabId: null,
     isLoading: false,

@@ -18,11 +18,11 @@ export interface EditorTab {
   id: string;
   path: string;
   name: string;
-  content: string | ArrayBuffer;
-  language?: string;
-  modified: boolean;
-  active: boolean;
+  content: string;
+  language: string;
+  isDirty: boolean;
   viewState?: any;
+  lastModified?: Date;
 }
 
 export interface MonacoInstance {

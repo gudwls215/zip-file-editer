@@ -1,10 +1,22 @@
 import * as monaco from 'monaco-editor';
 import { getLanguageFromFilename } from '../utils/fileUtils';
 
-export class MonacoService {
+export interface IMonacoEditorService {
+  initialize(): Promise<void>;
+  createEditor(container: HTMLElement, options?: monaco.editor.IStandaloneEditorConstructionOptions): monaco.editor.IStandaloneCodeEditor;
+  createModel(uri: string, content: string, language?: string): monaco.editor.ITextModel;
+  getOrCreateModel(uri: string, content: string, language?: string): monaco.editor.ITextModel;
+  disposeModel(uri: string): void;
+  dispose(): void;
+  isInitialized(): boolean;
+}
+
+export class MonacoService implements IMonacoEditorService {
   private static instance: MonacoService;
   private editor: monaco.editor.IStandaloneCodeEditor | null = null;
   private models: Map<string, monaco.editor.ITextModel> = new Map();
+  private editors: Set<monaco.editor.IStandaloneCodeEditor> = new Set();
+  private initialized: boolean = false;
 
   static getInstance(): MonacoService {
     if (!MonacoService.instance) {
@@ -13,9 +25,20 @@ export class MonacoService {
     return MonacoService.instance;
   }
 
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      // Monaco is already loaded via vite-plugin-monaco-editor
+      this.configureMonaco();
+      this.initialized = true;
+    } catch (error) {
+      throw new Error(`Failed to initialize Monaco: ${error}`);
+    }
+  }
+
   async initializeMonaco(): Promise<void> {
-    // Monaco is already loaded via vite-plugin-monaco-editor
-    this.configureMonaco();
+    return this.initialize();
   }
 
   private configureMonaco(): void {
@@ -43,19 +66,37 @@ export class MonacoService {
     });
   }
 
-  initEditor(container: HTMLElement, options?: monaco.editor.IStandaloneEditorConstructionOptions): monaco.editor.IStandaloneCodeEditor {
-    this.editor = monaco.editor.create(container, {
+  createEditor(
+    container: HTMLElement, 
+    options: monaco.editor.IStandaloneEditorConstructionOptions = {}
+  ): monaco.editor.IStandaloneCodeEditor {
+    if (!this.initialized) {
+      throw new Error('MonacoService must be initialized before creating editors');
+    }
+
+    const editor = monaco.editor.create(container, {
       theme: 'vs-dark',
       automaticLayout: true,
-      minimap: { enabled: true },
       fontSize: 14,
-      wordWrap: 'on',
+      fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace',
+      minimap: { enabled: false },
       scrollBeyondLastLine: false,
+      wordWrap: 'on',
+      tabSize: 2,
+      insertSpaces: true,
       renderWhitespace: 'selection',
+      lineNumbers: 'on',
       ...options
     });
 
-    return this.editor;
+    this.editors.add(editor);
+    
+    // Auto-cleanup when editor is disposed
+    editor.onDidDispose(() => {
+      this.editors.delete(editor);
+    });
+
+    return editor;
   }
 
   createModel(path: string, content: string): monaco.editor.ITextModel {
@@ -76,6 +117,31 @@ export class MonacoService {
     return model;
   }
 
+  getOrCreateModel(uri: string, content: string, language?: string): monaco.editor.ITextModel {
+    const existing = this.models.get(uri);
+    if (existing) {
+      if (existing.getValue() !== content) {
+        existing.setValue(content);
+      }
+      return existing;
+    }
+    
+    const detectedLanguage = language || this.detectLanguage(uri);
+    const monacoUri = monaco.Uri.parse(uri);
+    const model = monaco.editor.createModel(content, detectedLanguage, monacoUri);
+    this.models.set(uri, model);
+    
+    return model;
+  }
+
+  disposeModel(uri: string): void {
+    const model = this.models.get(uri);
+    if (model) {
+      model.dispose();
+      this.models.delete(uri);
+    }
+  }
+
   setModel(path: string, content: string): void {
     if (!this.editor) return;
     
@@ -91,20 +157,58 @@ export class MonacoService {
     return getLanguageFromFilename(filename);
   }
 
-  createEditor(container: HTMLElement, value: string, language: string): monaco.editor.IStandaloneCodeEditor {
-    return monaco.editor.create(container, {
-      value,
-      language,
-      theme: 'vs-dark',
-      automaticLayout: true,
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      fontSize: 14,
-      lineNumbers: 'on',
-      wordWrap: 'on',
-      tabSize: 2,
-      insertSpaces: true
-    });
+  dispose(): void {
+    // Dispose all models
+    this.models.forEach(model => model.dispose());
+    this.models.clear();
+    
+    // Dispose all editors
+    this.editors.forEach(editor => editor.dispose());
+    this.editors.clear();
+    
+    this.editor?.dispose();
+    this.editor = null;
+    this.initialized = false;
+  }
+
+  private detectLanguage(uri: string): string {
+    const extension = uri.split('.').pop()?.toLowerCase() || '';
+    const languageMap: Record<string, string> = {
+      'ts': 'typescript',
+      'tsx': 'typescript',
+      'js': 'javascript',
+      'jsx': 'javascript',
+      'json': 'json',
+      'html': 'html',
+      'css': 'css',
+      'scss': 'scss',
+      'md': 'markdown',
+      'py': 'python',
+      'java': 'java',
+      'go': 'go',
+      'rs': 'rust',
+      'php': 'php',
+      'rb': 'ruby',
+      'xml': 'xml',
+      'yaml': 'yaml',
+      'yml': 'yaml'
+    };
+    
+    return languageMap[extension] || 'plaintext';
+  }
+
+  getEditor(): monaco.editor.IStandaloneCodeEditor | null {
+    return this.editor;
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  // Legacy methods for backward compatibility
+  initEditor(container: HTMLElement, options?: monaco.editor.IStandaloneEditorConstructionOptions): monaco.editor.IStandaloneCodeEditor {
+    this.editor = this.createEditor(container, options);
+    return this.editor;
   }
 
   setTheme(theme: string): void {
@@ -115,20 +219,5 @@ export class MonacoService {
     if (editor && typeof editor.dispose === 'function') {
       editor.dispose();
     }
-  }
-
-  dispose(): void {
-    this.models.forEach(model => model.dispose());
-    this.models.clear();
-    this.editor?.dispose();
-    this.editor = null;
-  }
-
-  getEditor(): monaco.editor.IStandaloneCodeEditor | null {
-    return this.editor;
-  }
-
-  isInitialized(): boolean {
-    return true; // Monaco is always available via plugin
   }
 }
