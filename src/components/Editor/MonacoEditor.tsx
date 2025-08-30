@@ -1,11 +1,11 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from "react";
 // Import Monaco workers setup
-import '../../setup/monacoWorkers';
-import * as monaco from 'monaco-editor';
-import { useEditorStore } from '../../store/editorStore';
-import { useZipStore } from '../../store/zipStore';
-import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
-import { MonacoService } from '../../services/monacoService';
+import "../../setup/monacoWorkers";
+import * as monaco from "monaco-editor";
+import { useEditorStore } from "../../store/editorStore";
+import { useZipStore } from "../../store/zipStore";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
+import { MonacoService } from "../../services/monacoService";
 
 export const MonacoEditor: React.FC = () => {
   const isProgrammaticChange = useRef(false);
@@ -13,28 +13,28 @@ export const MonacoEditor: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const monacoSvcRef = useRef(MonacoService.getInstance());
   const prevActiveIdRef = useRef<string | null>(null);
-  const { 
-    getActiveTab, 
-    updateTabContent, 
-    theme, 
-    fontSize, 
-    wordWrap, 
+  const {
+    getActiveTab,
+    updateTabContent,
+    theme,
+    fontSize,
+    wordWrap,
     minimap,
     markTabSaved,
-  removeTab,
-  setTabViewState
+    removeTab,
+    setTabViewState,
   } = useEditorStore();
   const { setSavedChange } = useZipStore();
 
   const activeTab = getActiveTab();
-  
+
   // Debug logging
-  console.log('MonacoEditor render - activeTab:', activeTab?.name);
+  console.log("MonacoEditor render - activeTab:", activeTab?.name);
 
   const handleSave = useCallback(() => {
     if (activeTab) {
       const value = editorRef.current?.getValue() ?? activeTab.content;
-      console.log('Saving tab:', activeTab.name);
+      console.log("Saving tab:", activeTab.name);
       // snapshot saved content for downloads
       setSavedChange(activeTab.path, value);
       if (value !== activeTab.content) {
@@ -60,11 +60,13 @@ export const MonacoEditor: React.FC = () => {
     onSave: handleSave,
     onCloseTab: handleCloseTab,
     onSearch: () => {
-      editorRef.current?.getAction('actions.find')?.run();
+      editorRef.current?.getAction("actions.find")?.run();
     },
     onReplace: () => {
-      editorRef.current?.getAction('editor.action.startFindReplaceAction')?.run();
-    }
+      editorRef.current
+        ?.getAction("editor.action.startFindReplaceAction")
+        ?.run();
+    },
   });
 
   const handleEditorChange = useCallback(() => {
@@ -83,31 +85,34 @@ export const MonacoEditor: React.FC = () => {
     if (!containerRef.current || editorRef.current) return;
 
     // Ensure Monaco service is initialized
-    monacoSvcRef.current.initialize().catch(() => {/* no-op */});
+    monacoSvcRef.current.initialize().catch(() => {
+      /* no-op */
+    });
 
     // Create editor without initial value; we'll set model per-tab below
     const editor = monaco.editor.create(containerRef.current, {
       theme: theme,
       fontSize,
-      fontFamily: '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
-      lineNumbers: 'on',
+      fontFamily:
+        '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
+      lineNumbers: "on",
       minimap: { enabled: minimap },
       automaticLayout: true,
       scrollBeyondLastLine: false,
-      wordWrap: wordWrap ? 'on' : 'off',
+      wordWrap: wordWrap ? "on" : "off",
       folding: true,
       glyphMargin: true,
-      renderWhitespace: 'selection',
+      renderWhitespace: "selection",
       tabSize: 2,
       insertSpaces: true,
       mouseWheelZoom: true,
-      cursorBlinking: 'blink',
-      cursorSmoothCaretAnimation: 'off',
-      smoothScrolling: false
+      cursorBlinking: "blink",
+      cursorSmoothCaretAnimation: "off",
+      smoothScrolling: false,
     });
 
     editorRef.current = editor;
-    console.log('Monaco Editor initialized successfully');
+    console.log("Monaco Editor initialized successfully");
 
     // Setup keyboard shortcuts
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -117,12 +122,12 @@ export const MonacoEditor: React.FC = () => {
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ,
       () => {
-        editor.trigger('keyboard', 'redo', {});
+        editor.trigger("keyboard", "redo", {});
       }
     );
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {
-      editor.trigger('keyboard', 'undo', {});
+      editor.trigger("keyboard", "undo", {});
     });
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => {
@@ -163,47 +168,64 @@ export const MonacoEditor: React.FC = () => {
       return;
     }
 
-    if (activeTab.language === 'image') {
+    if (activeTab.language === "image") {
       editor.setModel(null);
       return;
     }
 
-  const uri = monaco.Uri.file(activeTab.path).toString();
+    const targetUri = monaco.Uri.file(activeTab.path);
+    const targetUriStr = targetUri.toString();
     // Get or create model for this file
-    const existing = monaco.editor.getModel(monaco.Uri.parse(uri));
-    let model = existing;
+    let model = monaco.editor.getModel(targetUri);
     if (!model) {
       model = monaco.editor.createModel(
         activeTab.content,
-        activeTab.language || 'plaintext',
-        monaco.Uri.parse(uri)
+        activeTab.language || "plaintext",
+        targetUri
       );
+    }
+
+    // Only switch model if different from current to preserve cursor on content updates
+    const currentModel = editor.getModel();
+    const switchedModel =
+      !currentModel || currentModel.uri.toString() !== targetUriStr;
+    if (switchedModel) {
+      editor.setModel(model);
     }
 
     // If model exists but content diverged (e.g., opened from ZIP again), reconcile without losing undo stack
     if (model.getValue() !== activeTab.content) {
-      // Apply edit to update model while keeping undo/redo
+      // Apply edit to update model while keeping undo/redo and preserve cursor
       isProgrammaticChange.current = true;
       const fullRange = model.getFullModelRange();
-      editor.executeEdits('sync-content', [
-        { range: fullRange, text: activeTab.content }
+      const prevSel = editor.getSelection();
+      editor.executeEdits("sync-content", [
+        { range: fullRange, text: activeTab.content },
       ]);
       model.pushStackElement();
+      // Restore selection to a valid position
+      if (prevSel) {
+        try {
+          const pos = model.validatePosition(prevSel.getPosition());
+          editor.setPosition(pos);
+        } catch {}
+      }
       isProgrammaticChange.current = false;
     }
 
-    // Switch model
-    editor.setModel(model);
-
-    // Restore view state if we have one
-    const vs = activeTab.viewState;
-    if (vs) {
-      try { editor.restoreViewState(vs); } catch {}
+    // Restore view state only when the model actually changed (e.g., tab switch)
+    if (switchedModel) {
+      const vs = activeTab.viewState;
+      if (vs) {
+        try {
+          editor.restoreViewState(vs);
+        } catch {}
+      }
     }
     editor.focus();
 
-  // Update prev active id for next switch
-  prevActiveIdRef.current = activeTab.id;
+    // Update prev active id for next switch
+    prevActiveIdRef.current = activeTab.id;
   }, [activeTab, setTabViewState]);
 
   // Update editor options when settings change
@@ -213,16 +235,18 @@ export const MonacoEditor: React.FC = () => {
     editorRef.current.updateOptions({
       theme,
       fontSize,
-      wordWrap: wordWrap ? 'on' : 'off',
-      minimap: { enabled: minimap }
+      wordWrap: wordWrap ? "on" : "off",
+      minimap: { enabled: minimap },
     });
   }, [theme, fontSize, wordWrap, minimap]);
 
   // Cleanup models for closed tabs to avoid memory leaks (keeps history for open tabs only)
-  const openTabs = useEditorStore(state => state.tabs);
+  const openTabs = useEditorStore((state) => state.tabs);
   useEffect(() => {
-    const openUris = new Set(openTabs.map(t => monaco.Uri.file(t.path).toString()));
-    monaco.editor.getModels().forEach(m => {
+    const openUris = new Set(
+      openTabs.map((t) => monaco.Uri.file(t.path).toString())
+    );
+    monaco.editor.getModels().forEach((m) => {
       const u = m.uri.toString();
       if (!openUris.has(u)) {
         m.dispose();
@@ -236,38 +260,44 @@ export const MonacoEditor: React.FC = () => {
       const hasUnsaved = useEditorStore.getState().hasUnsavedChanges();
       if (hasUnsaved) {
         e.preventDefault();
-        e.returnValue = '';
+        e.returnValue = "";
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
   if (!activeTab) {
     return (
-      <div style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#1e1e1e',
-        color: '#cccccc'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '500',
-            marginBottom: '8px'
-          }}>
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#1e1e1e",
+          color: "#cccccc",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: "16px",
+              fontWeight: "500",
+              marginBottom: "8px",
+            }}
+          >
             Monaco Editor
           </div>
-          <div style={{
-            fontSize: '12px',
-            color: '#999999',
-            fontStyle: 'italic'
-          }}>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#999999",
+              fontStyle: "italic",
+            }}
+          >
             Select a file from the tree to edit
           </div>
         </div>
@@ -275,34 +305,38 @@ export const MonacoEditor: React.FC = () => {
     );
   }
 
-  if (activeTab.language === 'image') {
+  if (activeTab.language === "image") {
     return (
-      <div style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#1e1e1e',
-        padding: '20px'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <img 
-            src={activeTab.content} 
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#1e1e1e",
+          padding: "20px",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <img
+            src={activeTab.content}
             alt={activeTab.name}
             style={{
-              maxWidth: '100%',
-              maxHeight: '70vh',
-              objectFit: 'contain',
-              border: '1px solid #464647',
-              borderRadius: '4px'
+              maxWidth: "100%",
+              maxHeight: "70vh",
+              objectFit: "contain",
+              border: "1px solid #464647",
+              borderRadius: "4px",
             }}
           />
-          <div style={{
-            marginTop: '12px',
-            fontSize: '12px',
-            color: '#999999'
-          }}>
+          <div
+            style={{
+              marginTop: "12px",
+              fontSize: "12px",
+              color: "#999999",
+            }}
+          >
             {activeTab.name}
           </div>
         </div>
@@ -311,41 +345,41 @@ export const MonacoEditor: React.FC = () => {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div 
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      <div
         ref={containerRef}
-        style={{ 
-          width: '100%', 
-          height: 'calc(100% - 22px)'
+        style={{
+          width: "100%",
+          height: "calc(100% - 22px)",
         }}
       />
-      
+
       {/* Status bar for current file */}
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '22px',
-        backgroundColor: '#007acc',
-        display: 'flex',
-        alignItems: 'center',
-        paddingLeft: '12px',
-        fontSize: '11px',
-        color: '#ffffff',
-        zIndex: 1000
-      }}>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "22px",
+          backgroundColor: "#007acc",
+          display: "flex",
+          alignItems: "center",
+          paddingLeft: "12px",
+          fontSize: "11px",
+          color: "#ffffff",
+          zIndex: 1000,
+        }}
+      >
         <span>{activeTab.name}</span>
-        <span style={{ marginLeft: '12px', opacity: 0.8 }}>
+        <span style={{ marginLeft: "12px", opacity: 0.8 }}>
           {activeTab.language}
         </span>
         {activeTab.isDirty && (
-          <span style={{ marginLeft: '12px', opacity: 0.8 }}>
-            • Modified
-          </span>
+          <span style={{ marginLeft: "12px", opacity: 0.8 }}>• Modified</span>
         )}
-        <span style={{ marginLeft: 'auto', marginRight: '12px', opacity: 0.6 }}>
-          Editor Ready: {editorRef.current ? 'Yes' : 'No'}
+        <span style={{ marginLeft: "auto", marginRight: "12px", opacity: 0.6 }}>
+          Editor Ready: {editorRef.current ? "Yes" : "No"}
         </span>
       </div>
     </div>

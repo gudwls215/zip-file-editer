@@ -147,11 +147,11 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       candidate = `${fullPath}-${counter++}`;
     }
 
-  zipFile.folder(`${candidate}`);
-  // Rebuild tree and preserve expansion state
-  const prev = get().fileTree;
-  const rebuilt = buildFileTree(zipFile);
-  set({ fileTree: mergeExpansionState(prev, rebuilt) });
+    zipFile.folder(`${candidate}`);
+    // Rebuild tree and preserve expansion state
+    const prev = get().fileTree;
+    const rebuilt = buildFileTree(zipFile);
+    set({ fileTree: mergeExpansionState(prev, rebuilt) });
   },
 
   addFile: (parentPath, fileName, content = "") => {
@@ -174,18 +174,20 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       candidate = `${basePath}${namePart}-${counter++}${extPart}`;
     }
 
-  zipFile.file(candidate, content);
-  // Rebuild tree and preserve expansion state
-  const prev = get().fileTree;
-  const rebuilt = buildFileTree(zipFile);
-  set({ fileTree: mergeExpansionState(prev, rebuilt) });
+    zipFile.file(candidate, content);
+    // Rebuild tree and preserve expansion state
+    const prev = get().fileTree;
+    const rebuilt = buildFileTree(zipFile);
+    set({ fileTree: mergeExpansionState(prev, rebuilt) });
   },
 
   deletePath: (path) => {
     const { zipFile } = get();
     if (!zipFile) return;
     const folderPrefix = `${path}/`;
-    const isFolder = !!zipFile.files[`${path}/`] || Object.keys(zipFile.files).some((p) => p.startsWith(folderPrefix));
+    const isFolder =
+      !!zipFile.files[`${path}/`] ||
+      Object.keys(zipFile.files).some((p) => p.startsWith(folderPrefix));
     if (isFolder) {
       Object.keys(zipFile.files)
         .filter((p) => p === folderPrefix || p.startsWith(folderPrefix))
@@ -208,10 +210,10 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       return { savedChanges: newSaved } as Partial<ZipStore>;
     });
 
-  // Rebuild tree and preserve expansion state
-  const prev = get().fileTree;
-  const rebuilt = buildFileTree(zipFile);
-  set({ fileTree: mergeExpansionState(prev, rebuilt) });
+    // Rebuild tree and preserve expansion state
+    const prev = get().fileTree;
+    const rebuilt = buildFileTree(zipFile);
+    set({ fileTree: mergeExpansionState(prev, rebuilt) });
   },
 
   // Saved changes actions
@@ -290,7 +292,10 @@ function buildFileTree(zip: JSZip): FileNode[] {
 }
 
 // Merge isExpanded state from old tree into new tree by matching paths
-function mergeExpansionState(oldTree: FileNode[], newTree: FileNode[]): FileNode[] {
+function mergeExpansionState(
+  oldTree: FileNode[],
+  newTree: FileNode[]
+): FileNode[] {
   const expanded = new Set<string>();
   const collect = (nodes: FileNode[]) => {
     for (const n of nodes) {
