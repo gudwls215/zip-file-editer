@@ -1,13 +1,18 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-// Ensure Monaco workers are wired before any editor actions
+// Import Monaco workers setup
 import '../../setup/monacoWorkers';
 import * as monaco from 'monaco-editor';
 import { useEditorStore } from '../../store/editorStore';
+import { useZipStore } from '../../store/zipStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { MonacoService } from '../../services/monacoService';
 
 export const MonacoEditor: React.FC = () => {
+  const isProgrammaticChange = useRef(false);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const monacoSvcRef = useRef(MonacoService.getInstance());
+  const prevActiveIdRef = useRef<string | null>(null);
   const { 
     getActiveTab, 
     updateTabContent, 
@@ -16,8 +21,10 @@ export const MonacoEditor: React.FC = () => {
     wordWrap, 
     minimap,
     markTabSaved,
-    removeTab
+  removeTab,
+  setTabViewState
   } = useEditorStore();
+  const { setSavedChange } = useZipStore();
 
   const activeTab = getActiveTab();
   
@@ -26,11 +33,16 @@ export const MonacoEditor: React.FC = () => {
 
   const handleSave = useCallback(() => {
     if (activeTab) {
+      const value = editorRef.current?.getValue() ?? activeTab.content;
       console.log('Saving tab:', activeTab.name);
+      // snapshot saved content for downloads
+      setSavedChange(activeTab.path, value);
+      if (value !== activeTab.content) {
+        updateTabContent(activeTab.id, value);
+      }
       markTabSaved(activeTab.id);
-      // Here you would implement actual save logic
     }
-  }, [activeTab, markTabSaved]);
+  }, [activeTab, markTabSaved, setSavedChange, updateTabContent]);
 
   const handleCloseTab = useCallback(() => {
     if (activeTab) {
@@ -56,22 +68,25 @@ export const MonacoEditor: React.FC = () => {
   });
 
   const handleEditorChange = useCallback(() => {
-    if (!editorRef.current || !activeTab) return;
-    
+    if (!editorRef.current) return;
+    if (isProgrammaticChange.current) return;
     const value = editorRef.current.getValue();
-    if (value !== activeTab.content) {
-      updateTabContent(activeTab.id, value);
+    const currentActive = useEditorStore.getState().getActiveTab();
+    if (!currentActive) return;
+    if (value !== currentActive.content) {
+      updateTabContent(currentActive.id, value);
     }
-  }, [activeTab, updateTabContent]);
+  }, [updateTabContent]);
 
   // Create Monaco Editor instance
   useEffect(() => {
     if (!containerRef.current || editorRef.current) return;
 
-    // Create editor instance
+    // Ensure Monaco service is initialized
+    monacoSvcRef.current.initialize().catch(() => {/* no-op */});
+
+    // Create editor without initial value; we'll set model per-tab below
     const editor = monaco.editor.create(containerRef.current, {
-      value: activeTab?.content || '',
-      language: activeTab?.language === 'image' ? 'plaintext' : (activeTab?.language || 'plaintext'),
       theme: theme,
       fontSize,
       fontFamily: '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
@@ -114,8 +129,11 @@ export const MonacoEditor: React.FC = () => {
       handleCloseTab();
     });
 
-    // Listen for content changes
-    editor.onDidChangeModelContent(handleEditorChange);
+    // Listen for content changes (ignore programmatic updates)
+    editor.onDidChangeModelContent(() => {
+      if (isProgrammaticChange.current) return;
+      handleEditorChange();
+    });
 
     // Cleanup on unmount
     return () => {
@@ -126,30 +144,67 @@ export const MonacoEditor: React.FC = () => {
     };
   }, []);
 
-  // Update editor when active tab changes
+  // Update editor when active tab changes: switch models to preserve per-file undo/redo
   useEffect(() => {
-    if (!editorRef.current || !activeTab) return;
+    const editor = editorRef.current;
+    if (!editor) return;
 
-    // Update content
-    const currentValue = editorRef.current.getValue();
-    if (currentValue !== activeTab.content) {
-      editorRef.current.setValue(activeTab.content);
+    // Save view state of previously active tab (tracked in ref)
+    const prevActiveId = prevActiveIdRef.current;
+    if (prevActiveId && prevActiveId !== activeTab?.id) {
+      try {
+        const viewState = editor.saveViewState();
+        setTabViewState(prevActiveId, viewState);
+      } catch {}
     }
 
-    // Update language
-    if (activeTab.language !== 'image') {
-      const model = editorRef.current.getModel();
-      if (model) {
-        try {
-          monaco.editor.setModelLanguage(model, activeTab.language);
-          console.log('Language set to:', activeTab.language);
-        } catch (langError) {
-          console.warn('Failed to set language:', activeTab.language, langError);
-          monaco.editor.setModelLanguage(model, 'plaintext');
-        }
-      }
+    if (!activeTab) {
+      editor.setModel(null);
+      return;
     }
-  }, [activeTab]);
+
+    if (activeTab.language === 'image') {
+      editor.setModel(null);
+      return;
+    }
+
+  const uri = monaco.Uri.file(activeTab.path).toString();
+    // Get or create model for this file
+    const existing = monaco.editor.getModel(monaco.Uri.parse(uri));
+    let model = existing;
+    if (!model) {
+      model = monaco.editor.createModel(
+        activeTab.content,
+        activeTab.language || 'plaintext',
+        monaco.Uri.parse(uri)
+      );
+    }
+
+    // If model exists but content diverged (e.g., opened from ZIP again), reconcile without losing undo stack
+    if (model.getValue() !== activeTab.content) {
+      // Apply edit to update model while keeping undo/redo
+      isProgrammaticChange.current = true;
+      const fullRange = model.getFullModelRange();
+      editor.executeEdits('sync-content', [
+        { range: fullRange, text: activeTab.content }
+      ]);
+      model.pushStackElement();
+      isProgrammaticChange.current = false;
+    }
+
+    // Switch model
+    editor.setModel(model);
+
+    // Restore view state if we have one
+    const vs = activeTab.viewState;
+    if (vs) {
+      try { editor.restoreViewState(vs); } catch {}
+    }
+    editor.focus();
+
+  // Update prev active id for next switch
+  prevActiveIdRef.current = activeTab.id;
+  }, [activeTab, setTabViewState]);
 
   // Update editor options when settings change
   useEffect(() => {
@@ -162,6 +217,18 @@ export const MonacoEditor: React.FC = () => {
       minimap: { enabled: minimap }
     });
   }, [theme, fontSize, wordWrap, minimap]);
+
+  // Cleanup models for closed tabs to avoid memory leaks (keeps history for open tabs only)
+  const openTabs = useEditorStore(state => state.tabs);
+  useEffect(() => {
+    const openUris = new Set(openTabs.map(t => monaco.Uri.file(t.path).toString()));
+    monaco.editor.getModels().forEach(m => {
+      const u = m.uri.toString();
+      if (!openUris.has(u)) {
+        m.dispose();
+      }
+    });
+  }, [openTabs]);
 
   // Warn before unload if there are unsaved changes
   useEffect(() => {

@@ -29,6 +29,7 @@ export interface EditorActions {
   setActiveTab: (tabId: string) => void;
   updateTabContent: (tabId: string, content: string) => void;
   markTabSaved: (tabId: string) => void;
+  setTabViewState: (tabId: string, viewState: any | null) => void;
   closeAllTabs: () => void;
   closeDirtyTabs: () => EditorTab[];
   
@@ -127,10 +128,12 @@ export const useEditorStore = create<EditorStore>()(
       updateTabContent: (tabId, content) => {
         set((state) => {
           const tab = state.tabs.find(t => t.id === tabId);
-          if (tab && tab.content !== content) {
-            tab.content = content;
-            tab.isDirty = true;
-            tab.lastModified = new Date();
+          if (tab) {
+            if (tab.content !== content) {
+              tab.content = content;
+              tab.isDirty = true;
+              tab.lastModified = new Date();
+            }
           }
         });
       },
@@ -140,6 +143,15 @@ export const useEditorStore = create<EditorStore>()(
           const tab = state.tabs.find(t => t.id === tabId);
           if (tab) {
             tab.isDirty = false;
+          }
+        });
+      },
+
+      setTabViewState: (tabId, viewState) => {
+        set((state) => {
+          const tab = state.tabs.find(t => t.id === tabId);
+          if (tab) {
+            tab.viewState = viewState || undefined;
           }
         });
       },

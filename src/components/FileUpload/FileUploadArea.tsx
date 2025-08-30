@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useRef } from 'react';
 import JSZip from 'jszip';
 import { useZipStore } from '../../store/zipStore';
+import { useEditorStore } from '../../store/editorStore';
 
 export const FileUploadArea: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -12,9 +13,10 @@ export const FileUploadArea: React.FC = () => {
     isLoading, 
     fileName,
     zipFile,
-    tabs,
     error 
   } = useZipStore();
+  
+  const { tabs, markTabSaved } = useEditorStore();
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.zip')) {
@@ -60,7 +62,13 @@ export const FileUploadArea: React.FC = () => {
         }
       });
       
-      // Apply changes from tabs
+      // Apply saved changes first (explicit saves)
+      const { savedChanges } = useZipStore.getState();
+      Object.entries(savedChanges).forEach(([path, content]) => {
+        modifiedZip.file(path, content);
+      });
+
+      // Then overlay any currently dirty tab content (unsaved but edited)
       for (const tab of tabs) {
         if (tab.isDirty) {
           modifiedZip.file(tab.path, tab.content);
@@ -77,13 +85,17 @@ export const FileUploadArea: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+  // Mark all tabs as saved and clear savedChanges snapshot
+  tabs.forEach(tab => { if (tab.isDirty) markTabSaved(tab.id); });
+  useZipStore.getState().clearSavedChanges();
     } catch (error) {
       console.error('Error downloading file:', error);
       setError('Failed to download file');
     } finally {
       setLoading(false);
     }
-  }, [zipFile, fileName, tabs, setLoading, setError]);
+  }, [zipFile, fileName, tabs, setLoading, setError, markTabSaved]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -117,7 +129,7 @@ export const FileUploadArea: React.FC = () => {
     fileInputRef.current?.click();
   }, [isLoading]);
 
-  const hasModifications = tabs.some(tab => tab.isDirty);
+  const hasModifications = useEditorStore(state => state.tabs.some(t => t.isDirty)) || Object.keys(useZipStore.getState().savedChanges).length > 0;
   const canDownload = zipFile && !isLoading;
 
   return (

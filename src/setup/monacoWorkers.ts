@@ -1,42 +1,30 @@
 // Monaco Editor worker setup for Vite
-// This sets up web workers for different language services
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
+import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 
-// Only set up workers in browser environment
+// Setup Monaco Environment for web workers
 if (typeof window !== 'undefined') {
   (window as any).MonacoEnvironment = {
-    getWorker: function (_moduleId: string, label: string) {
-      // Import workers dynamically
+    getWorker(_: any, label: string) {
       switch (label) {
         case 'json':
-          return new Worker(
-            new URL('monaco-editor/esm/vs/language/json/json.worker', import.meta.url),
-            { type: 'module' }
-          );
+          return new jsonWorker();
         case 'css':
         case 'scss':
         case 'less':
-          return new Worker(
-            new URL('monaco-editor/esm/vs/language/css/css.worker', import.meta.url),
-            { type: 'module' }
-          );
+          return new cssWorker();
         case 'html':
         case 'handlebars':
         case 'razor':
-          return new Worker(
-            new URL('monaco-editor/esm/vs/language/html/html.worker', import.meta.url),
-            { type: 'module' }
-          );
+          return new htmlWorker();
         case 'typescript':
         case 'javascript':
-          return new Worker(
-            new URL('monaco-editor/esm/vs/language/typescript/ts.worker', import.meta.url),
-            { type: 'module' }
-          );
+          return new tsWorker();
         default:
-          return new Worker(
-            new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url),
-            { type: 'module' }
-          );
+          return new editorWorker();
       }
     }
   };
