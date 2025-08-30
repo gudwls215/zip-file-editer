@@ -10,7 +10,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@monaco-editor/react": "^4.7.0",
     "file-saver": "^2.0.5",
     "immer": "^10.0.3",
     "jszip": "^3.10.1",

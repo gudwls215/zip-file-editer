@@ -2,12 +2,12 @@ import React, { useRef, useEffect, useCallback } from 'react';
 // Ensure Monaco workers are wired before any editor actions
 import '../../setup/monacoWorkers';
 import * as monaco from 'monaco-editor';
-import Editor, { useMonaco } from '@monaco-editor/react';
 import { useEditorStore } from '../../store/editorStore';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 export const MonacoEditor: React.FC = () => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const { 
     getActiveTab, 
     updateTabContent, 
@@ -18,7 +18,6 @@ export const MonacoEditor: React.FC = () => {
     markTabSaved,
     removeTab
   } = useEditorStore();
-  const monacoInstance = useMonaco();
 
   const activeTab = getActiveTab();
   
@@ -56,7 +55,42 @@ export const MonacoEditor: React.FC = () => {
     }
   });
 
-  function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor) {
+  const handleEditorChange = useCallback(() => {
+    if (!editorRef.current || !activeTab) return;
+    
+    const value = editorRef.current.getValue();
+    if (value !== activeTab.content) {
+      updateTabContent(activeTab.id, value);
+    }
+  }, [activeTab, updateTabContent]);
+
+  // Create Monaco Editor instance
+  useEffect(() => {
+    if (!containerRef.current || editorRef.current) return;
+
+    // Create editor instance
+    const editor = monaco.editor.create(containerRef.current, {
+      value: activeTab?.content || '',
+      language: activeTab?.language === 'image' ? 'plaintext' : (activeTab?.language || 'plaintext'),
+      theme: theme,
+      fontSize,
+      fontFamily: '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
+      lineNumbers: 'on',
+      minimap: { enabled: minimap },
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      wordWrap: wordWrap ? 'on' : 'off',
+      folding: true,
+      glyphMargin: true,
+      renderWhitespace: 'selection',
+      tabSize: 2,
+      insertSpaces: true,
+      mouseWheelZoom: true,
+      cursorBlinking: 'blink',
+      cursorSmoothCaretAnimation: 'off',
+      smoothScrolling: false
+    });
+
     editorRef.current = editor;
     console.log('Monaco Editor initialized successfully');
 
@@ -79,29 +113,55 @@ export const MonacoEditor: React.FC = () => {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => {
       handleCloseTab();
     });
-  }
 
-  const handleEditorChange = useCallback((value: string | undefined) => {
-    if (activeTab && value !== undefined && value !== activeTab.content) {
-      updateTabContent(activeTab.id, value);
-    }
-  }, [activeTab, updateTabContent]);
+    // Listen for content changes
+    editor.onDidChangeModelContent(handleEditorChange);
 
-  // Update editor language when active tab changes
+    // Cleanup on unmount
+    return () => {
+      if (editorRef.current) {
+        editorRef.current.dispose();
+        editorRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update editor when active tab changes
   useEffect(() => {
-    if (monacoInstance && activeTab && activeTab.language !== 'image') {
-      const model = editorRef.current?.getModel();
+    if (!editorRef.current || !activeTab) return;
+
+    // Update content
+    const currentValue = editorRef.current.getValue();
+    if (currentValue !== activeTab.content) {
+      editorRef.current.setValue(activeTab.content);
+    }
+
+    // Update language
+    if (activeTab.language !== 'image') {
+      const model = editorRef.current.getModel();
       if (model) {
         try {
-          monacoInstance.editor.setModelLanguage(model, activeTab.language);
+          monaco.editor.setModelLanguage(model, activeTab.language);
           console.log('Language set to:', activeTab.language);
         } catch (langError) {
           console.warn('Failed to set language:', activeTab.language, langError);
-          monacoInstance.editor.setModelLanguage(model, 'plaintext');
+          monaco.editor.setModelLanguage(model, 'plaintext');
         }
       }
     }
-  }, [activeTab, monacoInstance]);
+  }, [activeTab]);
+
+  // Update editor options when settings change
+  useEffect(() => {
+    if (!editorRef.current) return;
+
+    editorRef.current.updateOptions({
+      theme,
+      fontSize,
+      wordWrap: wordWrap ? 'on' : 'off',
+      minimap: { enabled: minimap }
+    });
+  }, [theme, fontSize, wordWrap, minimap]);
 
   // Warn before unload if there are unsaved changes
   useEffect(() => {
@@ -185,30 +245,11 @@ export const MonacoEditor: React.FC = () => {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Editor
-        height="calc(100% - 22px)"
-        language={activeTab.language}
-        value={activeTab.content}
-        theme={theme}
-        onMount={handleEditorDidMount}
-        onChange={handleEditorChange}
-        options={{
-          fontSize,
-          fontFamily: '"Cascadia Code", "Fira Code", "Consolas", "Monaco", monospace',
-          lineNumbers: 'on',
-          minimap: { enabled: minimap },
-          automaticLayout: true,
-          scrollBeyondLastLine: false,
-          wordWrap: wordWrap ? 'on' : 'off',
-          folding: true,
-          glyphMargin: true,
-          renderWhitespace: 'selection',
-          tabSize: 2,
-          insertSpaces: true,
-          mouseWheelZoom: true,
-          cursorBlinking: 'blink',
-          cursorSmoothCaretAnimation: 'off',
-          smoothScrolling: false
+      <div 
+        ref={containerRef}
+        style={{ 
+          width: '100%', 
+          height: 'calc(100% - 22px)'
         }}
       />
       
