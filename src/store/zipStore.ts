@@ -17,29 +17,29 @@ interface EditorTab {
   path: string;
   content: string;
   language: string;
-  isDirty: boolean;
+  isDirty: boolean; // 수정 여부 - do/undo 상태 관리의 핵심
 }
 
 interface ZipStore {
-  // ZIP related state
-  zipFile: JSZip | null;
-  fileName: string | null;
-  originalBuffer: ArrayBuffer | null;
-  fileTree: FileNode[];
-  // Saved changes snapshot (persisted on Ctrl+S)
+  // ZIP 관련 상태
+  zipFile: JSZip | null; // 현재 로드된 ZIP 파일 객체
+  fileName: string | null; // ZIP 파일명
+  originalBuffer: ArrayBuffer | null; // 원본 ZIP 데이터 (되돌리기용)
+  fileTree: FileNode[]; // 파일 트리 구조
+  // 저장된 변경사항 스냅샷 (Ctrl+S 시 저장됨) - do/undo의 저장 지점
   savedChanges: Record<string, string>;
-  // Track structural changes (added/deleted files/folders)
+  // 구조적 변경사항 추적 (파일/폴더 추가/삭제) - 전체적인 undo 범위
   hasStructuralChanges: boolean;
 
-  // Editor state
-  tabs: EditorTab[];
-  activeTabId: string | null;
+  // 에디터 상태
+  tabs: EditorTab[]; // 열린 탭들
+  activeTabId: string | null; // 활성 탭 ID
 
-  // UI state
+  // UI 상태
   isLoading: boolean;
   error: string | null;
 
-  // Actions
+  // 액션들
   setZipData: (data: {
     zipFile: JSZip;
     fileName: string;
@@ -49,15 +49,15 @@ interface ZipStore {
   addTab: (tab: EditorTab) => void;
   removeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
-  updateTabContent: (tabId: string, content: string) => void;
+  updateTabContent: (tabId: string, content: string) => void; // do/undo 히스토리 생성
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  // Saved changes actions
+  // 저장된 변경사항 액션들 - do/undo 저장 지점 관리
   setSavedChange: (path: string, content: string) => void;
   removeSavedChange: (path: string) => void;
   clearSavedChanges: () => void;
-  saveFile: (path: string, content: string) => void;
-  // File/Folder mutations
+  saveFile: (path: string, content: string) => void; // 파일 저장 시 do/undo 상태 리셋
+  // 파일/폴더 변경 액션들 - 구조적 undo 지점 생성
   addFolder: (parentPath: string | null, folderName: string) => void;
   addFile: (
     parentPath: string | null,
@@ -69,34 +69,34 @@ interface ZipStore {
 }
 
 export const useZipStore = create<ZipStore>((set, get) => ({
-  // Initial state
+  // 초기 상태
   zipFile: null,
   fileName: null,
   originalBuffer: null,
   fileTree: [],
-  savedChanges: {},
-  hasStructuralChanges: false,
+  savedChanges: {}, // do/undo의 저장 지점들을 기록
+  hasStructuralChanges: false, // 구조적 변경사항 플래그 (전체 undo 범위)
   tabs: [],
   activeTabId: null,
   isLoading: false,
   error: null,
 
-  // Actions
+  // 액션들
   setZipData: ({ zipFile, fileName, originalBuffer }) => {
-    // 새로운 ZIP 파일 로드 시 모든 상태 초기화
+    // 새로운 ZIP 파일 로드 시 모든 상태 초기화 (do/undo 히스토리도 초기화)
     set({
       zipFile,
       fileName,
       originalBuffer,
       error: null,
-      savedChanges: {},
-      hasStructuralChanges: false,
-      // 기존 탭들과 에디터 상태 초기화
+      savedChanges: {}, // 저장된 변경사항 초기화
+      hasStructuralChanges: false, // 구조적 변경사항 초기화
+      // 기존 탭들과 에디터 상태 초기화 (do/undo 상태도 함께 초기화)
       tabs: [],
       activeTabId: null,
     });
 
-    // Build file tree
+    // 파일 트리 구성
     const tree = buildFileTree(zipFile);
     set({ fileTree: tree });
   },
@@ -108,8 +108,10 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     const existingTab = tabs.find((t) => t.path === tab.path);
 
     if (existingTab) {
+      // 이미 열린 탭이 있으면 활성화 (do/undo 히스토리도 해당 탭의 것으로 전환)
       set({ activeTabId: existingTab.id });
     } else {
+      // 새 탭 추가 (새로운 do/undo 히스토리 시작)
       set({
         tabs: [...tabs, tab],
         activeTabId: tab.id,
@@ -123,6 +125,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
 
     let newActiveTabId = activeTabId;
     if (activeTabId === tabId) {
+      // 활성 탭이 닫히면 다른 탭으로 전환 (do/undo 히스토리도 전환)
       newActiveTabId =
         newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
     }
@@ -130,12 +133,18 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     set({ tabs: newTabs, activeTabId: newActiveTabId });
   },
 
-  setActiveTab: (tabId) => set({ activeTabId: tabId }),
+  setActiveTab: (tabId) => set({ activeTabId: tabId }), // 탭 전환 시 do/undo 히스토리도 전환
 
   updateTabContent: (tabId, content) => {
     const { tabs } = get();
     const updatedTabs = tabs.map((tab) =>
-      tab.id === tabId ? { ...tab, content, isDirty: true } : tab
+      tab.id === tabId
+        ? {
+            ...tab,
+            content,
+            isDirty: true, // 콘텐츠 변경 시 더티 상태로 설정 (do/undo 가능 상태)
+          }
+        : tab
     );
     set({ tabs: updatedTabs });
   },
@@ -143,7 +152,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
 
-  // File/Folder mutations
+  // 파일/폴더 변경 액션들 - 구조적 변경사항 추적
   addFolder: (parentPath, folderName) => {
     const { zipFile } = get();
     if (!zipFile) return;
@@ -155,7 +164,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
         ? `${parentPath}/${sanitized}`
         : sanitized;
 
-    // Ensure unique name
+    // 고유한 이름 보장
     let candidate = fullPath;
     let counter = 1;
     while (zipHasAny(zipFile, `${candidate}/`)) {
@@ -163,12 +172,12 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     }
 
     zipFile.folder(`${candidate}`);
-    // Rebuild tree and preserve expansion state
+    // 트리 재구성 및 확장 상태 보존
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
     set({
       fileTree: mergeExpansionState(prev, rebuilt),
-      hasStructuralChanges: true,
+      hasStructuralChanges: true, // 구조적 변경사항 발생 (undo 가능한 지점)
     });
   },
 
@@ -182,7 +191,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       parentPath && parentPath.length > 0 ? `${parentPath}/` : "";
     const fullBase = `${basePath}${sanitized}`;
 
-    // Ensure unique name
+    // 고유한 이름 보장
     let candidate = fullBase;
     let counter = 1;
     const extMatch = sanitized.match(/^(.*?)(\.[^.]*)?$/);
@@ -193,12 +202,12 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     }
 
     zipFile.file(candidate, content);
-    // Rebuild tree and preserve expansion state
+    // 트리 재구성 및 확장 상태 보존
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
     set({
       fileTree: mergeExpansionState(prev, rebuilt),
-      hasStructuralChanges: true,
+      hasStructuralChanges: true, // 새 파일 추가로 인한 구조적 변경사항
     });
   },
 
@@ -209,15 +218,18 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     const isFolder =
       !!zipFile.files[`${path}/`] ||
       Object.keys(zipFile.files).some((p) => p.startsWith(folderPrefix));
+
     if (isFolder) {
+      // 폴더 삭제 시 하위의 모든 파일도 함께 제거
       Object.keys(zipFile.files)
         .filter((p) => p === folderPrefix || p.startsWith(folderPrefix))
         .forEach((p) => zipFile.remove(p));
     } else {
+      // 단일 파일 삭제
       zipFile.remove(path);
     }
 
-    // Clean savedChanges for removed paths
+    // 삭제된 경로에 대한 저장된 변경사항도 정리 (do/undo 히스토리 정리)
     set((state) => {
       const newSaved: Record<string, string> = {};
       const prefix = isFolder ? `${path}/` : null;
@@ -231,37 +243,39 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       return { savedChanges: newSaved } as Partial<ZipStore>;
     });
 
-    // Rebuild tree and preserve expansion state
+    // 트리 재구성 및 확장 상태 보존
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
     set({
       fileTree: mergeExpansionState(prev, rebuilt),
-      hasStructuralChanges: true,
+      hasStructuralChanges: true, // 삭제로 인한 구조적 변경사항
     });
   },
 
-  // Saved changes actions
+  // 저장된 변경사항 액션들 - do/undo의 저장 지점 관리
   setSavedChange: (path, content) => {
     set((state) => ({
-      savedChanges: { ...state.savedChanges, [path]: content },
+      savedChanges: { ...state.savedChanges, [path]: content }, // 특정 파일의 저장 지점 설정
     }));
   },
   removeSavedChange: (path) => {
     const { savedChanges } = get();
     if (path in savedChanges) {
+      // 해당 파일의 저장 지점 제거 (do/undo 히스토리에서 제외)
       const { [path]: _, ...rest } = savedChanges;
       set({ savedChanges: rest });
     }
   },
-  clearSavedChanges: () => set({ savedChanges: {} }),
+  clearSavedChanges: () => set({ savedChanges: {} }), // 모든 저장 지점 초기화 (전체 do/undo 히스토리 리셋)
 
   saveFile: (path, content) => {
     // 파일을 저장할 때 savedChanges에 반영하고, 에디터 탭의 isDirty 상태 업데이트
+    // 이 시점이 새로운 do/undo 저장 지점이 됨
     set((state) => ({
       savedChanges: { ...state.savedChanges, [path]: content },
     }));
 
-    // EditorStore의 markTabSaved 호출하여 isDirty 상태 업데이트
+    // EditorStore의 markTabSaved 호출하여 isDirty 상태 업데이트 (do/undo 상태 동기화)
     import("./editorStore").then(({ useEditorStore }) => {
       const editorStore = useEditorStore.getState();
       const tab = editorStore.tabs.find((t) => t.path === path);
@@ -273,6 +287,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
 
   reset: () =>
     set({
+      // 모든 상태 초기화 (전체 do/undo 히스토리 완전 초기화)
       zipFile: null,
       fileName: null,
       originalBuffer: null,
@@ -286,12 +301,12 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     }),
 }));
 
-// Helper function to build file tree from JSZip
+// JSZip에서 파일 트리를 구성하는 헬퍼 함수
 function buildFileTree(zip: JSZip): FileNode[] {
   const tree: FileNode[] = [];
   const pathMap = new Map<string, FileNode>();
 
-  // First pass: create all nodes
+  // 첫 번째 패스: 모든 노드 생성
   Object.keys(zip.files).forEach((path) => {
     const file = zip.files[path];
     const segments = path.split("/").filter((s) => s.length > 0);
@@ -312,7 +327,7 @@ function buildFileTree(zip: JSZip): FileNode[] {
           path: currentPath,
           type: isFile ? "file" : "folder",
           children: isFile ? undefined : [],
-          isExpanded: false,
+          isExpanded: false, // 기본적으로 폴더는 접힌 상태
         };
 
         pathMap.set(currentPath, node);
@@ -332,12 +347,13 @@ function buildFileTree(zip: JSZip): FileNode[] {
   return tree;
 }
 
-// Merge isExpanded state from old tree into new tree by matching paths
+// 이전 트리의 확장 상태를 새 트리에 병합하는 함수 (사용자 경험 향상)
 function mergeExpansionState(
   oldTree: FileNode[],
   newTree: FileNode[]
 ): FileNode[] {
   const expanded = new Set<string>();
+  // 이전 트리에서 확장된 노드들 수집
   const collect = (nodes: FileNode[]) => {
     for (const n of nodes) {
       if (n.isExpanded) expanded.add(n.path);
@@ -346,6 +362,7 @@ function mergeExpansionState(
   };
   collect(oldTree);
 
+  // 새 트리에 확장 상태 적용
   const apply = (nodes: FileNode[]): FileNode[] =>
     nodes.map((n) => ({
       ...n,
@@ -356,16 +373,16 @@ function mergeExpansionState(
   return apply(newTree);
 }
 
-// Internal helpers
+// 내부 헬퍼 함수들
 function zipHasExact(zip: JSZip, fullPath: string): boolean {
   return !!zip.files[fullPath];
 }
 function zipHasAny(zip: JSZip, folderWithSlash: string): boolean {
-  // For folder, JSZip keeps an entry like 'folder/' if created or implied by files
+  // 폴더의 경우, JSZip은 생성되거나 파일에 의해 암시된 경우 'folder/'와 같은 엔트리를 유지
   return Object.prototype.hasOwnProperty.call(zip.files, folderWithSlash);
 }
 
-// Helper function to determine file language
+// 파일 언어를 결정하는 헬퍼 함수
 export function getFileLanguage(fileName: string): string {
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
   const fullName = fileName.toLowerCase();
@@ -643,22 +660,22 @@ export function getFileLanguage(fileName: string): string {
     functions: "shell",
   };
 
-  // Check by filename first (without extension)
+  // 확장자로 확인 (파일명 기반)
   const nameWithoutExt = fullName.replace(/\.[^.]*$/, "");
   if (languageMap[nameWithoutExt]) {
     return languageMap[nameWithoutExt];
   }
 
-  // Check by extension
+  // 확장자로 확인
   return languageMap[ext] || "plaintext";
 }
 
-// Helper function to check if file is binary
+// 바이너리 파일인지 확인하는 헬퍼 함수
 export function isBinaryFile(fileName: string): boolean {
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
   const fullName = fileName.toLowerCase();
 
-  // Image files (excluding SVG which can be edited as text)
+  // 이미지 파일들 (SVG 제외 - 텍스트로 편집 가능)
   const binaryImageExtensions = [
     "png",
     "jpg",
@@ -679,7 +696,7 @@ export function isBinaryFile(fileName: string): boolean {
     "dng",
   ];
 
-  // Audio/Video files
+  // 오디오/비디오 파일들
   const mediaExtensions = [
     "mp3",
     "mp4",
@@ -702,7 +719,7 @@ export function isBinaryFile(fileName: string): boolean {
     "ogv",
   ];
 
-  // Archive files
+  // 압축 파일들
   const archiveExtensions = [
     "zip",
     "rar",
@@ -721,7 +738,7 @@ export function isBinaryFile(fileName: string): boolean {
     "img",
   ];
 
-  // Document files (binary format)
+  // 문서 파일들 (바이너리 형식)
   const binaryDocumentExtensions = [
     "pdf",
     "doc",
@@ -738,7 +755,7 @@ export function isBinaryFile(fileName: string): boolean {
     "key",
   ];
 
-  // Executable and compiled files
+  // 실행 파일 및 컴파일된 파일들
   const executableExtensions = [
     "exe",
     "dll",
@@ -766,13 +783,13 @@ export function isBinaryFile(fileName: string): boolean {
     "a",
   ];
 
-  // Font files
+  // 폰트 파일들
   const fontExtensions = ["ttf", "otf", "woff", "woff2", "eot", "fon", "fnt"];
 
-  // Database files
+  // 데이터베이스 파일들
   const databaseExtensions = ["db", "sqlite", "sqlite3", "mdb", "accdb", "dbf"];
 
-  // Design files
+  // 디자인 파일들
   const designExtensions = ["psd", "ai", "sketch", "fig", "xd", "swf", "fla"];
 
   const strictlyBinaryExtensions = [
@@ -786,12 +803,12 @@ export function isBinaryFile(fileName: string): boolean {
     ...designExtensions,
   ];
 
-  // Check by extension - only strictly binary files
+  // 확장자로 확인 - 명확한 바이너리 파일들만
   if (strictlyBinaryExtensions.includes(ext)) {
     return true;
   }
 
-  // Special case: files that might be confused as binary but are actually text
+  // 특별한 경우: 바이너리로 오해될 수 있지만 실제로는 텍스트인 파일들
   const textFilenames = [
     "readme",
     "license",
@@ -817,19 +834,19 @@ export function isBinaryFile(fileName: string): boolean {
     return false;
   }
 
-  // Files without extensions or with config-like extensions are likely text
+  // 확장자가 없거나 설정 파일 같은 확장자를 가진 파일들은 대부분 텍스트
   if (!ext || ext.length > 5) {
     return false;
   }
 
-  // Default to text if we're not sure
+  // 확실하지 않으면 기본적으로 텍스트로 처리
   return false;
 }
 
-// Helper function to check if file is image
+// 이미지 파일인지 확인하는 헬퍼 함수
 export function isImageFile(fileName: string): boolean {
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
-  // SVG is excluded because it's XML and can be edited as text
+  // SVG는 XML이므로 텍스트로 편집 가능하여 제외
   const imageExtensions = [
     "png",
     "jpg",
@@ -847,14 +864,14 @@ export function isImageFile(fileName: string): boolean {
   return imageExtensions.includes(ext);
 }
 
-// Helper function to check if file is editable text
+// 편집 가능한 텍스트 파일인지 확인하는 헬퍼 함수
 export function isEditableFile(fileName: string): boolean {
-  // If it's not binary, it's likely editable
+  // 바이너리가 아니면 편집 가능할 가능성이 높음
   if (!isBinaryFile(fileName)) {
     return true;
   }
 
-  // SVG is technically XML, so it can be edited as text
+  // SVG는 기술적으로 XML이므로 텍스트로 편집 가능
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
   if (ext === "svg") {
     return true;
@@ -863,7 +880,7 @@ export function isEditableFile(fileName: string): boolean {
   return false;
 }
 
-// Helper function to get file type category
+// 파일 타입 카테고리를 가져오는 헬퍼 함수
 export function getFileCategory(fileName: string): "text" | "image" | "binary" {
   if (isImageFile(fileName)) {
     return "image";
@@ -876,16 +893,16 @@ export function getFileCategory(fileName: string): "text" | "image" | "binary" {
   return "text";
 }
 
-// Helper function to determine if file content should be loaded as text
+// 파일 내용을 텍스트로 로드해야 하는지 결정하는 헬퍼 함수
 export function shouldLoadAsText(fileName: string): boolean {
   const category = getFileCategory(fileName);
 
-  // Load text files and SVG files as text
+  // 텍스트 파일과 SVG 파일을 텍스트로 로드
   if (category === "text") {
     return true;
   }
 
-  // SVG can be edited as text even though it's an image
+  // SVG는 이미지이지만 텍스트로 편집 가능
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
   if (ext === "svg") {
     return true;
