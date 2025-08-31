@@ -162,9 +162,3 @@ npm run test              # 단위 테스트
 npm run test:e2e          # E2E 테스트
 npm run test:coverage     # 커버리지 리포트
 ```
-
-### 📧 제출 정보
-
-- **GitHub Repository**: [https://github.com/gudwls215/zip-file-editer](https://github.com/gudwls215/zip-file-editer)
-- **공유 계정**: @elice-frontend (접근 권한 부여 완료)
-- **라이브 데모**: 배포 예정
