@@ -16,7 +16,7 @@ export const FileUploadArea: React.FC = () => {
     error,
   } = useZipStore();
 
-  const { tabs, markTabSaved } = useEditorStore();
+  const { tabs, markTabSaved, closeAllTabs } = useEditorStore();
 
   const handleFileUpload = useCallback(
     async (file: File) => {
@@ -29,6 +29,9 @@ export const FileUploadArea: React.FC = () => {
       setError(null);
 
       try {
+        // 새로운 ZIP 파일 로드 전에 모든 에디터 탭 닫기
+        closeAllTabs();
+
         const arrayBuffer = await file.arrayBuffer();
         const zip = new JSZip();
         const zipData = await zip.loadAsync(arrayBuffer);
@@ -45,7 +48,7 @@ export const FileUploadArea: React.FC = () => {
         setLoading(false);
       }
     },
-    [setZipData, setError, setLoading]
+    [setZipData, setError, setLoading, closeAllTabs]
   );
 
   const handleDownload = useCallback(async () => {

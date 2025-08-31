@@ -79,7 +79,17 @@ export const useZipStore = create<ZipStore>((set, get) => ({
 
   // Actions
   setZipData: ({ zipFile, fileName, originalBuffer }) => {
-    set({ zipFile, fileName, originalBuffer, error: null, savedChanges: {} });
+    // 새로운 ZIP 파일 로드 시 모든 상태 초기화
+    set({
+      zipFile,
+      fileName,
+      originalBuffer,
+      error: null,
+      savedChanges: {},
+      // 기존 탭들과 에디터 상태 초기화
+      tabs: [],
+      activeTabId: null,
+    });
 
     // Build file tree
     const tree = buildFileTree(zipFile);

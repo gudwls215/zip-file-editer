@@ -20,7 +20,7 @@ export default defineConfig({
   /* 모든 테스트에서 공유되는 설정 */
   use: {
     /* 베이스 URL로 page.goto('/')를 사용할 수 있습니다 */
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:5174",
 
     /* 실패한 테스트의 스크린샷 수집 */
     screenshot: "only-on-failure",
@@ -73,7 +73,7 @@ export default defineConfig({
   /* 테스트 시작 전 개발 서버 실행 */
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:5173",
+    url: "http://localhost:5174",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

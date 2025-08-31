@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useZipStore } from "../zipStore";
-import JSZip from "jszip";
 
 // JSZip 목킹
 vi.mock("jszip");
@@ -189,6 +188,50 @@ describe("ZipStore", () => {
 
       const state = useZipStore.getState();
       expect(state.savedChanges).toEqual({});
+    });
+  });
+
+  describe("ZIP 파일 로드 및 상태 초기화", () => {
+    it("새로운 ZIP 파일 로드 시 기존 탭과 상태를 초기화해야 함", () => {
+      const { addTab, setSavedChange, setError, setZipData } =
+        useZipStore.getState();
+
+      // 기존 상태 설정
+      addTab({
+        id: "tab1",
+        name: "old-file.js",
+        path: "old-file.js",
+        content: "console.log('old');",
+        language: "javascript",
+        isDirty: false,
+      });
+      setSavedChange("old-file.js", "saved content");
+      setError("previous error");
+
+      // 새로운 ZIP 파일 로드 (files 속성을 가진 모킹 객체)
+      const mockZip = {
+        files: {}, // 빈 파일 목록
+      } as any;
+      const mockBuffer = new ArrayBuffer(100);
+
+      setZipData({
+        zipFile: mockZip,
+        fileName: "new-file.zip",
+        originalBuffer: mockBuffer,
+      });
+
+      const state = useZipStore.getState();
+
+      // 기존 상태가 초기화되었는지 확인
+      expect(state.tabs).toEqual([]);
+      expect(state.activeTabId).toBeNull();
+      expect(state.savedChanges).toEqual({});
+      expect(state.error).toBeNull();
+
+      // 새로운 ZIP 데이터가 설정되었는지 확인
+      expect(state.zipFile).toBe(mockZip);
+      expect(state.fileName).toBe("new-file.zip");
+      expect(state.originalBuffer).toBe(mockBuffer);
     });
   });
 
