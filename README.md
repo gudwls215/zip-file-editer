@@ -108,35 +108,35 @@ import { ZipService, FileService } from "./services";
 
 ### Purpose (목적 달성)
 
-- [v] 엘리스 프로젝트 기능 일부 구현 (파일 시스템 + 코드 편집)
-- [v] 복잡한 외부 라이브러리 (Monaco, JSZip) 무리 없이 연동
-- [v] GitHub 저장소 생성 및 @elice-frontend 계정 공유
-- [v] 시니어 엔지니어 수준의 아키텍처 설계
-- [v] README.md에 상세한 아키텍처 및 코드 설명
+- [x] 엘리스 프로젝트 기능 일부 구현 (파일 시스템 + 코드 편집)
+- [x] 복잡한 외부 라이브러리 (Monaco, JSZip) 무리 없이 연동
+- [x] GitHub 저장소 생성 및 @elice-frontend 계정 공유
+- [x] 시니어 엔지니어 수준의 아키텍처 설계
+- [x] README.md에 상세한 아키텍처 및 코드 설명
 
 ### Technical Requirements (기술 요구사항)
 
-- [v] **TypeScript** 100% 적용
-- [v] **React Hooks** 기반 Functional Component
-- [v] **Styled Components** CSS-in-JS 활용
-- [v] **Performance Optimization**
-  - [v] 키 입력 시 웹사이트 반응성 유지
-  - [v] 불필요한 렌더링 방지 (React.memo, useCallback)
-  - [v] 번들 크기 최적화 (Monaco 지연 로딩)
+- [x] **TypeScript** 100% 적용
+- [x] **React Hooks** 기반 Functional Component
+- [x] **Styled Components** CSS-in-JS 활용
+- [x] **Performance Optimization**
+  - [x] 키 입력 시 웹사이트 반응성 유지
+  - [x] 불필요한 렌더링 방지 (React.memo, useCallback)
+  - [x] 번들 크기 최적화 (Monaco 지연 로딩)
 
 ### Extras (선택 사항 - 모두 구현)
 
-- [v] **10,000개 이상 파일** 최적화 (가상 스크롤링)
-- [v] **파일/폴더 추가/삭제** 지원
-- [v] **Testing**
-  - [v] Unit Test (Vitest, 95% 커버리지)
-  - [v] E2E Test (Playwright)
-- [v] **ZIP 파일 업로드/수정/다운로드** 완전 구현
-- [v] **Monaco 고급 기능**
-  - [x] Multi-model editor (탭별 독립 모델)
-  - [x] Syntax highlighting (확장자 기반)
-  - [x] Theme 지원 (VS Code 테마)
-  - [x] Auto completion
+- [x] **10,000개 이상 파일** 최적화 (가상 스크롤링)
+- [x] **파일/폴더 추가/삭제** 지원
+- [x] **Testing**
+  - [x] Unit Test (Vitest, 95% 커버리지)
+  - [x] E2E Test (Playwright)
+- [x] **ZIP 파일 업로드/수정/다운로드** 완전 구현
+- [ ] **Monaco 고급 기능**
+  - [ ] Multi-model editor (탭별 독립 모델)
+  - [ ] Syntax highlighting (확장자 기반)
+  - [ ] Theme 지원 (VS Code 테마)
+  - [ ] Auto completion
 
 ## 빠른 시작
 
