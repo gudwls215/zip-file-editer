@@ -9,6 +9,7 @@ export interface EditorTab {
   content: string;
   language: string;
   isDirty: boolean; // 수정 여부 - do/undo 기능의 기반이 되는 상태
+  originalContent: string; // 저장된 원본 내용 (isDirty 상태 비교용)
   viewState?: any; // 에디터 뷰 상태 (커서 위치, 스크롤 등)
   lastModified?: Date; // 마지막 수정 시간
 }
@@ -24,7 +25,7 @@ export interface EditorState {
 
 export interface EditorActions {
   // 탭 관리 기능
-  addTab: (tab: Omit<EditorTab, "id" | "isDirty">) => string;
+  addTab: (tab: Omit<EditorTab, "id" | "isDirty" | "originalContent"> & { originalContent?: string }) => string;
   removeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateTabContent: (tabId: string, content: string) => void; // 콘텐츠 변경 시 isDirty=true 설정
@@ -94,6 +95,7 @@ export const useEditorStore = create<EditorStore>()(
             ...tabData,
             id,
             isDirty: false, // 새 탭은 수정되지 않은 상태로 시작 (do/undo 초기 상태)
+            originalContent: tabData.originalContent ?? tabData.content, // 저장된 원본 내용으로 설정
             lastModified: new Date(),
           };
 
@@ -141,7 +143,8 @@ export const useEditorStore = create<EditorStore>()(
           if (tab) {
             if (tab.content !== content) {
               tab.content = content;
-              tab.isDirty = true; // 콘텐츠 변경 시 더티 상태로 표시 (do/undo 가능 상태)
+              // 원본 내용과 비교해서 isDirty 상태 결정
+              tab.isDirty = content !== tab.originalContent;
               tab.lastModified = new Date();
             }
           }
@@ -153,6 +156,7 @@ export const useEditorStore = create<EditorStore>()(
           const tab = state.tabs.find((t) => t.id === tabId);
           if (tab) {
             tab.isDirty = false; // 저장 시 더티 상태 해제 (do/undo 초기화 지점)
+            tab.originalContent = tab.content; // 현재 내용을 새로운 원본으로 설정
           }
         });
       },
@@ -237,12 +241,16 @@ export const useEditorStore = create<EditorStore>()(
           name,
           path: fileId,
           content,
+          originalContent: content, // 초기 원본 내용 설정
           language: "javascript",
         });
       },
 
       openTab: (tabData) => {
-        get().addTab(tabData);
+        get().addTab({
+          ...tabData,
+          originalContent: tabData.content, // 초기 원본 내용 설정
+        });
       },
 
       closeFile: (fileId) => {
