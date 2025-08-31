@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
-import { useEditorStore } from '../../store/editorStore';
-import { MonacoEditor } from './MonacoEditor';
-import { EditorTabs } from './EditorTabs';
-import styled from 'styled-components';
+import React, { useEffect } from "react";
+import { useEditorStore } from "../../store/editorStore";
+import { LazyMonacoEditorWrapper } from "./LazyMonacoEditor";
+import { EditorTabs } from "./EditorTabs";
+import styled from "styled-components";
 
 const Container = styled.div`
   display: flex;
@@ -28,10 +28,7 @@ const EmptyState = styled.div`
 `;
 
 export const EditorContainer: React.FC = () => {
-  const {
-    getActiveTab,
-    hasUnsavedChanges
-  } = useEditorStore();
+  const { getActiveTab, hasUnsavedChanges } = useEditorStore();
 
   const activeTab = getActiveTab();
 
@@ -40,12 +37,12 @@ export const EditorContainer: React.FC = () => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges()) {
         e.preventDefault();
-        e.returnValue = '';
+        e.returnValue = "";
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
   return (
@@ -53,14 +50,14 @@ export const EditorContainer: React.FC = () => {
       <EditorTabs />
       <EditorArea>
         {activeTab ? (
-          <MonacoEditor />
+          <LazyMonacoEditorWrapper />
         ) : (
           <EmptyState>
             <div>
-              <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+              <div style={{ fontSize: "16px", marginBottom: "8px" }}>
                 No file selected
               </div>
-              <div style={{ fontSize: '12px', opacity: 0.7 }}>
+              <div style={{ fontSize: "12px", opacity: 0.7 }}>
                 Select a file from the tree to start editing
               </div>
             </div>

@@ -37,11 +37,45 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Monaco를 별도 청크로 분리 (필요할 때만 로드)
-          "monaco-core": ["monaco-editor"],
-          vendor: ["react", "react-dom", "zustand"],
-          utils: ["jszip", "file-saver"],
+        manualChunks: (id) => {
+          // Monaco Editor 및 관련 워커들을 분리
+          if (id.includes("monaco-editor")) {
+            if (id.includes("worker")) {
+              return "monaco-workers";
+            }
+            return "monaco-core";
+          }
+
+          // Node modules 벤더 분리
+          if (id.includes("node_modules")) {
+            if (id.includes("react") || id.includes("react-dom")) {
+              return "react-vendor";
+            }
+            if (id.includes("zustand")) {
+              return "state-vendor";
+            }
+            if (id.includes("jszip") || id.includes("file-saver")) {
+              return "file-vendor";
+            }
+            if (id.includes("styled-components")) {
+              return "style-vendor";
+            }
+            return "vendor";
+          }
+
+          // 애플리케이션 코드 분리
+          if (id.includes("/src/components/Editor/")) {
+            return "editor-components";
+          }
+          if (id.includes("/src/components/")) {
+            return "ui-components";
+          }
+          if (id.includes("/src/store/")) {
+            return "store";
+          }
+          if (id.includes("/src/services/")) {
+            return "services";
+          }
         },
       },
     },

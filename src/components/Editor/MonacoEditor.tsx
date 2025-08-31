@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from "react";
-// Import Monaco workers setup
+// Import Monaco workers setup only when Monaco Editor is loaded
 import "../../setup/monacoWorkers";
 import * as monaco from "monaco-editor";
 import { useEditorStore } from "../../store/editorStore";
