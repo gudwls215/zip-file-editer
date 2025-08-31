@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 interface PerformanceMetrics {
   initialLoadTime: number;
   monacoLoadTime?: number;
   chunkLoadTimes: { [key: string]: number };
   memoryUsage?: number;
+}
+
+interface Position {
+  x: number;
+  y: number;
 }
 
 interface PerformanceMonitorProps {
@@ -18,6 +23,72 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
     initialLoadTime: 0,
     chunkLoadTimes: {},
   });
+
+  // 드래그 관련 상태
+  const [position, setPosition] = useState<Position>({ x: 10, y: 10 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
+  const monitorRef = useRef<HTMLDivElement>(null);
+
+  // 드래그 시작
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    });
+  };
+
+  // 드래그 중
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+
+    // 화면 경계 제한
+    const maxX = window.innerWidth - (monitorRef.current?.offsetWidth || 300);
+    const maxY = window.innerHeight - (monitorRef.current?.offsetHeight || 200);
+
+    setPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY)),
+    });
+  };
+
+  // 드래그 종료
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // 드래그 이벤트 리스너 등록
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart]);
+
+  // 초기 위치를 우측 하단으로 설정
+  useEffect(() => {
+    const setInitialPosition = () => {
+      const width = 280; // 실제 모니터 너비에 맞게 조정
+      const height = 180; // 실제 모니터 높이에 맞게 조정
+      setPosition({
+        x: window.innerWidth - width - 5, // 여백을 10px에서 5px로 줄임
+        y: window.innerHeight - height - 5, // 여백을 10px에서 5px로 줄임
+      });
+    };
+
+    // 컴포넌트 마운트 시와 리사이즈 시 위치 조정
+    setInitialPosition();
+    window.addEventListener("resize", setInitialPosition);
+    return () => window.removeEventListener("resize", setInitialPosition);
+  }, []);
 
   useEffect(() => {
     if (!isEnabled) return;
@@ -100,10 +171,11 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
 
   return (
     <div
+      ref={monitorRef}
       style={{
         position: "fixed",
-        top: "10px",
-        right: "10px",
+        top: `${position.y}px`,
+        left: `${position.x}px`,
         background: "rgba(0, 0, 0, 0.8)",
         color: "white",
         padding: "10px",
@@ -112,9 +184,14 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
         fontFamily: "monospace",
         zIndex: 10000,
         maxWidth: "300px",
+        cursor: isDragging ? "grabbing" : "grab",
+        userSelect: "none",
+        border: "1px solid #333",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
       }}
+      onMouseDown={handleMouseDown}
     >
-      <div style={{ fontWeight: "bold", marginBottom: "8px" }}>
+      <div style={{ fontWeight: "bold", marginBottom: "8px", cursor: "grab" }}>
         Performance Monitor
       </div>
 
