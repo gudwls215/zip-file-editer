@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 import { FileUploadArea } from "../FileUpload/FileUploadArea";
 import { OptimizedFileTree } from "../FileTree/OptimizedFileTree";
 import { EditorContainer } from "../Editor/EditorContainer";
@@ -11,6 +11,58 @@ const AppLayout: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileUploadRef = useRef<HTMLInputElement>(null);
   const { addFile, addFolder } = useZipStore();
+
+  // Resizable 상태
+  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<HTMLDivElement>(null);
+
+  // 마우스 이벤트 핸들러
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const newWidth = e.clientX;
+      // 최소 200px, 최대 800px로 제한
+      const clampedWidth = Math.max(200, Math.min(800, newWidth));
+      setSidebarWidth(clampedWidth);
+    },
+    [isResizing]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+    // resize handle의 배경색도 초기화
+    if (resizeRef.current) {
+      resizeRef.current.style.backgroundColor = "transparent";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "ew-resize";
+      document.body.style.userSelect = "none";
+    } else {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   const handleAddFile = useCallback(() => {
     addFile(null, "new-file.txt", "");
@@ -144,12 +196,13 @@ const AppLayout: React.FC = () => {
         {/* Left Sidebar - File Tree */}
         <div
           style={{
-            width: "300px",
+            width: `${sidebarWidth}px`,
             backgroundColor: "#252526",
             borderRight: "1px solid #464647",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
+            position: "relative",
           }}
         >
           <div
@@ -264,6 +317,32 @@ const AppLayout: React.FC = () => {
           >
             <OptimizedFileTree />
           </div>
+
+          {/* Resize Handle */}
+          <div
+            ref={resizeRef}
+            onMouseDown={handleMouseDown}
+            style={{
+              position: "absolute",
+              top: 0,
+              right: -3,
+              width: "6px",
+              height: "100%",
+              cursor: "ew-resize",
+              backgroundColor: isResizing ? "#007acc" : "transparent",
+              zIndex: 10,
+            }}
+            onMouseEnter={(e) => {
+              if (!isResizing) {
+                e.currentTarget.style.backgroundColor = "#007acc";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isResizing) {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }
+            }}
+          />
         </div>
 
         {/* Right Content Area - Integrated Editor */}
