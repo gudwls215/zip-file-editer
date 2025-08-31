@@ -16,7 +16,7 @@ export const FileUploadArea: React.FC = () => {
     error,
   } = useZipStore();
 
-  const { tabs, markTabSaved, closeAllTabs } = useEditorStore();
+  const { closeAllTabs } = useEditorStore();
 
   const handleFileUpload = useCallback(
     async (file: File) => {
@@ -68,18 +68,11 @@ export const FileUploadArea: React.FC = () => {
         }
       });
 
-      // Apply saved changes first (explicit saves)
+      // Apply only saved changes (저장된 변경사항만 반영)
       const { savedChanges } = useZipStore.getState();
       Object.entries(savedChanges).forEach(([path, content]) => {
         modifiedZip.file(path, content);
       });
-
-      // Then overlay any currently dirty tab content (unsaved but edited)
-      for (const tab of tabs) {
-        if (tab.isDirty) {
-          modifiedZip.file(tab.path, tab.content);
-        }
-      }
 
       // Generate and download
       const blob = await modifiedZip.generateAsync({ type: "blob" });
@@ -91,19 +84,13 @@ export const FileUploadArea: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
-      // Mark all tabs as saved and clear savedChanges snapshot
-      tabs.forEach((tab) => {
-        if (tab.isDirty) markTabSaved(tab.id);
-      });
-      useZipStore.getState().clearSavedChanges();
     } catch (error) {
       console.error("Error downloading file:", error);
       setError("Failed to download file");
     } finally {
       setLoading(false);
     }
-  }, [zipFile, fileName, tabs, setLoading, setError, markTabSaved]);
+  }, [zipFile, fileName, setLoading, setError]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -143,9 +130,11 @@ export const FileUploadArea: React.FC = () => {
     fileInputRef.current?.click();
   }, [isLoading]);
 
-  const hasModifications =
-    useEditorStore((state) => state.tabs.some((t) => t.isDirty)) ||
-    Object.keys(useZipStore.getState().savedChanges).length > 0;
+  const savedChanges = useZipStore((state) => state.savedChanges);
+  const hasUnsavedChanges = useEditorStore((state) =>
+    state.tabs.some((t) => t.isDirty)
+  );
+  const hasSavedModifications = Object.keys(savedChanges).length > 0;
   const canDownload = zipFile && !isLoading;
 
   return (
@@ -220,7 +209,7 @@ export const FileUploadArea: React.FC = () => {
             height: "80px",
             minWidth: "120px",
             backgroundColor: canDownload
-              ? hasModifications
+              ? hasSavedModifications
                 ? "#0e639c"
                 : "#4a4a4a"
               : "#3a3a3a",
@@ -240,14 +229,14 @@ export const FileUploadArea: React.FC = () => {
           }}
           onMouseEnter={(e) => {
             if (canDownload) {
-              e.currentTarget.style.backgroundColor = hasModifications
+              e.currentTarget.style.backgroundColor = hasSavedModifications
                 ? "#1177bb"
                 : "#5a5a5a";
             }
           }}
           onMouseLeave={(e) => {
             if (canDownload) {
-              e.currentTarget.style.backgroundColor = hasModifications
+              e.currentTarget.style.backgroundColor = hasSavedModifications
                 ? "#0e639c"
                 : "#4a4a4a";
             }

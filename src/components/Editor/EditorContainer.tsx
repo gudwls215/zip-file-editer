@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 import { useEditorStore } from "../../store/editorStore";
+import { useZipStore } from "../../store/zipStore";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { LazyMonacoEditorWrapper } from "./LazyMonacoEditor";
 import { EditorTabs } from "./EditorTabs";
 import styled from "styled-components";
@@ -29,8 +31,18 @@ const EmptyState = styled.div`
 
 export const EditorContainer: React.FC = () => {
   const { getActiveTab, hasUnsavedChanges } = useEditorStore();
+  const { saveFile } = useZipStore();
 
   const activeTab = getActiveTab();
+
+  // Handle save shortcut
+  useKeyboardShortcuts({
+    onSave: () => {
+      if (activeTab && activeTab.isDirty) {
+        saveFile(activeTab.path, activeTab.content);
+      }
+    },
+  });
 
   // Warn before unload if there are unsaved changes
   useEffect(() => {

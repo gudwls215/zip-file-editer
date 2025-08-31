@@ -54,6 +54,7 @@ interface ZipStore {
   setSavedChange: (path: string, content: string) => void;
   removeSavedChange: (path: string) => void;
   clearSavedChanges: () => void;
+  saveFile: (path: string, content: string) => void;
   // File/Folder mutations
   addFolder: (parentPath: string | null, folderName: string) => void;
   addFile: (
@@ -240,6 +241,22 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     }
   },
   clearSavedChanges: () => set({ savedChanges: {} }),
+
+  saveFile: (path, content) => {
+    // 파일을 저장할 때 savedChanges에 반영하고, 에디터 탭의 isDirty 상태 업데이트
+    set((state) => ({
+      savedChanges: { ...state.savedChanges, [path]: content },
+    }));
+
+    // EditorStore의 markTabSaved 호출하여 isDirty 상태 업데이트
+    import("./editorStore").then(({ useEditorStore }) => {
+      const editorStore = useEditorStore.getState();
+      const tab = editorStore.tabs.find((t) => t.path === path);
+      if (tab) {
+        editorStore.markTabSaved(tab.id);
+      }
+    });
+  },
 
   reset: () =>
     set({
