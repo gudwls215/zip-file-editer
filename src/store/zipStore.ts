@@ -28,6 +28,8 @@ interface ZipStore {
   fileTree: FileNode[];
   // Saved changes snapshot (persisted on Ctrl+S)
   savedChanges: Record<string, string>;
+  // Track structural changes (added/deleted files/folders)
+  hasStructuralChanges: boolean;
 
   // Editor state
   tabs: EditorTab[];
@@ -73,6 +75,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   originalBuffer: null,
   fileTree: [],
   savedChanges: {},
+  hasStructuralChanges: false,
   tabs: [],
   activeTabId: null,
   isLoading: false,
@@ -87,6 +90,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       originalBuffer,
       error: null,
       savedChanges: {},
+      hasStructuralChanges: false,
       // 기존 탭들과 에디터 상태 초기화
       tabs: [],
       activeTabId: null,
@@ -162,7 +166,10 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     // Rebuild tree and preserve expansion state
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
-    set({ fileTree: mergeExpansionState(prev, rebuilt) });
+    set({
+      fileTree: mergeExpansionState(prev, rebuilt),
+      hasStructuralChanges: true,
+    });
   },
 
   addFile: (parentPath, fileName, content = "") => {
@@ -189,7 +196,10 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     // Rebuild tree and preserve expansion state
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
-    set({ fileTree: mergeExpansionState(prev, rebuilt) });
+    set({
+      fileTree: mergeExpansionState(prev, rebuilt),
+      hasStructuralChanges: true,
+    });
   },
 
   deletePath: (path) => {
@@ -224,7 +234,10 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     // Rebuild tree and preserve expansion state
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
-    set({ fileTree: mergeExpansionState(prev, rebuilt) });
+    set({
+      fileTree: mergeExpansionState(prev, rebuilt),
+      hasStructuralChanges: true,
+    });
   },
 
   // Saved changes actions
@@ -265,6 +278,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       originalBuffer: null,
       fileTree: [],
       savedChanges: {},
+      hasStructuralChanges: false,
       tabs: [],
       activeTabId: null,
       isLoading: false,

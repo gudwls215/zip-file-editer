@@ -131,11 +131,17 @@ export const FileUploadArea: React.FC = () => {
   }, [isLoading]);
 
   const savedChanges = useZipStore((state) => state.savedChanges);
+  const hasStructuralChanges = useZipStore(
+    (state) => state.hasStructuralChanges
+  );
   const hasUnsavedChanges = useEditorStore((state) =>
     state.tabs.some((t) => t.isDirty)
   );
   const hasSavedModifications = Object.keys(savedChanges).length > 0;
-  const canDownload = zipFile && !isLoading;
+
+  // 다운로드 가능 조건: ZIP 파일이 있고, 로딩 중이 아니며, 실제 변경사항이 있을 때
+  const hasAnyChanges = hasSavedModifications || hasStructuralChanges;
+  const canDownload = zipFile && !isLoading && hasAnyChanges;
 
   return (
     <div style={{ width: "100%" }}>
@@ -209,7 +215,7 @@ export const FileUploadArea: React.FC = () => {
             height: "80px",
             minWidth: "120px",
             backgroundColor: canDownload
-              ? hasSavedModifications
+              ? hasAnyChanges
                 ? "#0e639c"
                 : "#4a4a4a"
               : "#3a3a3a",
@@ -229,14 +235,14 @@ export const FileUploadArea: React.FC = () => {
           }}
           onMouseEnter={(e) => {
             if (canDownload) {
-              e.currentTarget.style.backgroundColor = hasSavedModifications
+              e.currentTarget.style.backgroundColor = hasAnyChanges
                 ? "#1177bb"
                 : "#5a5a5a";
             }
           }}
           onMouseLeave={(e) => {
             if (canDownload) {
-              e.currentTarget.style.backgroundColor = hasSavedModifications
+              e.currentTarget.style.backgroundColor = hasAnyChanges
                 ? "#0e639c"
                 : "#4a4a4a";
             }
