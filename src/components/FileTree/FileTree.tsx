@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, memo, useMemo } from "react";
 import addFileIcon from "../../assets/add_file.svg";
 import addFolderIcon from "../../assets/add_folder.svg";
 import deleteIcon from "../../assets/delete.svg";
@@ -9,6 +9,64 @@ import {
   isImageFile,
 } from "../../store/zipStore";
 import { useEditorStore } from "../../store/editorStore";
+
+// 스타일 상수들 - 매번 새로운 객체 생성 방지
+const FILE_NODE_STYLES = {
+  container: {
+    display: "flex",
+    alignItems: "center",
+    padding: "4px 8px",
+    cursor: "pointer",
+    fontSize: "12px",
+    color: "#cccccc",
+    userSelect: "none" as const,
+    transition: "background-color 0.15s ease",
+  },
+  icon: {
+    marginRight: "6px",
+    fontSize: "10px",
+  },
+  name: {
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  actions: {
+    display: "flex",
+    gap: 6,
+  },
+  button: {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    padding: 0,
+  },
+  childrenContainer: {
+    // 자식 노드 컨테이너는 추가 스타일 없음
+  },
+} as const;
+
+const TREE_CONTAINER_STYLES = {
+  padding: "8px 0",
+  height: "100%",
+  overflow: "auto",
+} as const;
+
+const TOP_ACTIONS_STYLES = {
+  display: "flex",
+  gap: 8,
+  padding: "0 8px 8px",
+  alignItems: "center",
+} as const;
+
+const EMPTY_TREE_STYLES = {
+  padding: "20px 12px",
+  textAlign: "center" as const,
+  color: "#999999",
+  fontSize: "12px",
+  fontStyle: "italic" as const,
+} as const;
 
 interface FileNodeProps {
   node: {
@@ -27,181 +85,168 @@ interface FileNodeProps {
   onDelete: (path: string, isFolder: boolean) => void;
 }
 
-const FileNode: React.FC<FileNodeProps> = ({
-  node,
-  level,
-  onFileClick,
-  onFolderToggle,
-  onAddFile,
-  onAddFolder,
-  onDelete,
-}) => {
-  const isFolder = node.type === "folder";
+const FileNode: React.FC<FileNodeProps> = memo(
+  ({
+    node,
+    level,
+    onFileClick,
+    onFolderToggle,
+    onAddFile,
+    onAddFolder,
+    onDelete,
+  }) => {
+    const isFolder = node.type === "folder";
 
-  const handleClick = useCallback(() => {
-    if (isFolder) {
-      onFolderToggle(node.path);
-    } else {
-      onFileClick(node.path);
-    }
-  }, [isFolder, node.path, onFileClick, onFolderToggle]);
+    const handleClick = useCallback(() => {
+      if (isFolder) {
+        onFolderToggle(node.path);
+      } else {
+        onFileClick(node.path);
+      }
+    }, [isFolder, node.path, onFileClick, onFolderToggle]);
 
-  const getIcon = () => {
-    if (isFolder) {
-      return node.isExpanded ? "📂" : "📁";
-    }
+    const handleAddFile = useCallback(() => {
+      const name = window.prompt("Enter new file name");
+      if (!name) return;
+      onAddFile(node.path, name);
+    }, [node.path, onAddFile]);
 
-    if (isImageFile(node.name)) return "🖼️";
-    if (isBinaryFile(node.name)) return "📄";
+    const handleAddFolder = useCallback(() => {
+      const name = window.prompt("Enter new folder name");
+      if (!name) return;
+      onAddFolder(node.path, name);
+    }, [node.path, onAddFolder]);
 
-    const ext = node.name.split(".").pop()?.toLowerCase() || "";
-    switch (ext) {
-      case "html":
-        return "🌐";
-      case "css":
-        return "🎨";
-      case "scss":
-      case "sass":
-      case "less":
-        return "🎨";
-      default:
-        return "📄";
-    }
-  };
+    const handleDelete = useCallback(() => {
+      onDelete(node.path, true);
+    }, [node.path, onDelete]);
 
-  return (
-    <div>
-      <div
-        onClick={handleClick}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "4px 8px",
-          paddingLeft: `${8 + level * 16}px`,
-          cursor: "pointer",
-          fontSize: "12px",
-          color: "#cccccc",
-          userSelect: "none",
-          transition: "background-color 0.15s ease",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = "#2a2d2e";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = "transparent";
-        }}
-      >
-        <span style={{ marginRight: "6px", fontSize: "10px" }}>
-          {getIcon()}
-        </span>
-        <span
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+    const handleFileDelete = useCallback(() => {
+      onDelete(node.path, false);
+    }, [node.path, onDelete]);
+
+    // 스타일을 메모이제이션하여 매번 새로운 객체 생성 방지
+    const containerStyle = useMemo(
+      () => ({
+        ...FILE_NODE_STYLES.container,
+        paddingLeft: `${8 + level * 16}px`,
+      }),
+      [level]
+    );
+
+    const getIcon = () => {
+      if (isFolder) {
+        return node.isExpanded ? "📂" : "📁";
+      }
+
+      if (isImageFile(node.name)) return "🖼️";
+      if (isBinaryFile(node.name)) return "📄";
+
+      const ext = node.name.split(".").pop()?.toLowerCase() || "";
+      switch (ext) {
+        case "html":
+          return "🌐";
+        case "css":
+          return "🎨";
+        case "scss":
+        case "sass":
+        case "less":
+          return "🎨";
+        default:
+          return "📄";
+      }
+    };
+
+    return (
+      <div>
+        <div
+          onClick={handleClick}
+          style={containerStyle}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#2a2d2e";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
           }}
         >
-          {node.name}
-        </span>
-        {/* Actions */}
-        {isFolder ? (
-          <span
-            style={{ display: "flex", gap: 6 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              title="New file"
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-              }}
-              onClick={() => {
-                const name = window.prompt("Enter new file name");
-                if (!name) return;
-                onAddFile(node.path, name);
-              }}
+          <span style={FILE_NODE_STYLES.icon}>{getIcon()}</span>
+          <span style={FILE_NODE_STYLES.name}>{node.name}</span>
+          {/* Actions */}
+          {isFolder ? (
+            <span
+              style={FILE_NODE_STYLES.actions}
+              onClick={(e) => e.stopPropagation()}
             >
-              <img src={addFileIcon} alt="add_file" width={16} height={16} />
-            </button>
-            <button
-              title="New folder"
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-              }}
-              onClick={() => {
-                const name = window.prompt("Enter new folder name");
-                if (!name) return;
-                onAddFolder(node.path, name);
-              }}
-            >
-              <img
-                src={addFolderIcon}
-                alt="add_folder"
-                width={16}
-                height={16}
+              <button
+                title="New file"
+                style={FILE_NODE_STYLES.button}
+                onClick={handleAddFile}
+              >
+                <img src={addFileIcon} alt="add_file" width={16} height={16} />
+              </button>
+              <button
+                title="New folder"
+                style={FILE_NODE_STYLES.button}
+                onClick={handleAddFolder}
+              >
+                <img
+                  src={addFolderIcon}
+                  alt="add_folder"
+                  width={16}
+                  height={16}
+                />
+              </button>
+              <button
+                title="Delete folder"
+                style={FILE_NODE_STYLES.button}
+                onClick={handleDelete}
+              >
+                <img
+                  src={deleteIcon}
+                  alt="delete_folder"
+                  width={16}
+                  height={16}
+                />
+              </button>
+            </span>
+          ) : (
+            <span onClick={(e) => e.stopPropagation()}>
+              <button
+                title="Delete file"
+                style={FILE_NODE_STYLES.button}
+                onClick={handleFileDelete}
+              >
+                <img
+                  src={deleteIcon}
+                  alt="delete_file"
+                  width={16}
+                  height={16}
+                />
+              </button>
+            </span>
+          )}
+        </div>
+
+        {isFolder && node.isExpanded && node.children && (
+          <div style={FILE_NODE_STYLES.childrenContainer}>
+            {node.children.map((child) => (
+              <FileNode
+                key={child.id}
+                node={child}
+                level={level + 1}
+                onFileClick={onFileClick}
+                onFolderToggle={onFolderToggle}
+                onAddFile={onAddFile}
+                onAddFolder={onAddFolder}
+                onDelete={onDelete}
               />
-            </button>
-            <button
-              title="Delete folder"
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-              }}
-              onClick={() => onDelete(node.path, true)}
-            >
-              <img
-                src={deleteIcon}
-                alt="delete_folder"
-                width={16}
-                height={16}
-              />
-            </button>
-          </span>
-        ) : (
-          <span onClick={(e) => e.stopPropagation()}>
-            <button
-              title="Delete file"
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-              }}
-              onClick={() => onDelete(node.path, false)}
-            >
-              <img src={deleteIcon} alt="delete_file" width={16} height={16} />
-            </button>
-          </span>
+            ))}
+          </div>
         )}
       </div>
-
-      {isFolder && node.isExpanded && node.children && (
-        <div>
-          {node.children.map((child) => (
-            <FileNode
-              key={child.id}
-              node={child}
-              level={level + 1}
-              onFileClick={onFileClick}
-              onFolderToggle={onFolderToggle}
-              onAddFile={onAddFile}
-              onAddFolder={onAddFolder}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+    );
+  }
+);
 
 export const FileTree: React.FC = () => {
   const { fileTree, setFileTree, zipFile, addFolder, addFile, deletePath } =
@@ -381,37 +426,16 @@ export const FileTree: React.FC = () => {
 
   if (fileTree.length === 0) {
     return (
-      <div
-        style={{
-          padding: "20px 12px",
-          textAlign: "center",
-          color: "#999999",
-          fontSize: "12px",
-          fontStyle: "italic",
-        }}
-      >
+      <div style={EMPTY_TREE_STYLES}>
         Upload a ZIP file to see the file tree
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        padding: "8px 0",
-        height: "100%",
-        overflow: "auto",
-      }}
-    >
+    <div style={TREE_CONTAINER_STYLES}>
       {/* Top-level actions */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          padding: "0 8px 8px",
-          alignItems: "center",
-        }}
-      ></div>
+      <div style={TOP_ACTIONS_STYLES}></div>
       {fileTree.map((node) => (
         <FileNode
           key={node.id}
