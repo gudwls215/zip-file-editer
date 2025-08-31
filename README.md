@@ -2,45 +2,52 @@
 
 웹 기반 ZIP 파일 편집기로, 브라우저에서 직접 ZIP 파일을 열고 편집할 수 있는 VS Code 스타일의 인터페이스를 제공합니다.
 
-## 주요 기능
-
-### ZIP 파일 관리
-
-- **드래그 앤 드롭** 업로드로 ZIP 파일 처리
-- ZIP 파일 내부 구조를 **트리 형태**로 시각화
-- **수정된 ZIP 파일 다운로드** 기능
-
-### 파일/폴더 관리
-
-- 파일 및 폴더 **추가/삭제** 기능
-- **10,000개 이상 파일** 처리 최적화 (가상 스크롤링)
-- 실시간 파일 트리 업데이트
-
-### Monaco Editor 통합
-
-- **Multi-model editor**: 탭별 독립적인 편집 모델
-- **Syntax highlighting**: 파일 확장자 기반 자동 언어 감지
-- **Auto completion**: 코드 자동완성 지원
-- **Theme 지원**: VS Code 다크/라이트 테마
-- **파일별 독립 Undo/Redo**: 탭 전환 시 히스토리 보존
-
-### 성능 최적화
-
-- **키 입력 반응성**: 빠른 타이핑에도 지연 없음
-- **불필요한 리렌더링 방지**: React.memo, useCallback 활용
-- **번들 크기 최적화**: Monaco Editor 지연 로딩 (< 500KB 초기 번들)
-- **메모리 효율성**: 탭 닫힐 때 모델 자동 정리
-
-### 테스팅 (Extras)
-
-- **Unit Test**: Vitest로 상태 관리 로직 테스트 (95% 커버리지)
-- **E2E Test**: Playwright로 ZIP 업로드/다운로드 플로우 테스트
-- **성능 테스트**: 대용량 파일 처리 시나리오
-
-### 주요 기능 미리보기
+## 프로젝트 구조
 
 ```
- ZIP 파일 업로드 → 파일 트리 표시 → 코드 편집 → 다운로드
+src/
+├── components/          # React 컴포넌트
+│   ├── Layout/         # 메인 레이아웃
+│   │   └── AppLayout.tsx
+│   ├── FileTree/       # 파일 트리 관련
+│   │   ├── OptimizedFileTree.tsx
+│   │   ├── VirtualFileTree.tsx
+│   │   ├── FileTree.tsx
+│   │   └── TreeNode.tsx
+│   ├── Editor/         # 에디터 관련
+│   │   ├── EditorContainer.tsx
+│   │   ├── EditorTabs.tsx
+│   │   ├── MonacoEditor.tsx
+│   │   └── LazyMonacoEditor.tsx
+│   ├── FileUpload/     # 파일 업로드
+│   │   ├── FileUploadArea.tsx
+│   │   └── DownloadButton.tsx
+│   └── Monaco/         # Monaco 에디터 래퍼
+│       └── MonacoEditorComponent.tsx
+├── store/              # 상태 관리 (Zustand)
+│   ├── editorStore.ts  # 에디터 상태
+│   ├── zipStore.ts     # ZIP 파일 상태
+│   └── fileStore.ts    # 파일 시스템 상태
+├── services/           # 비즈니스 로직
+│   ├── zipService.ts   # ZIP 파일 처리
+│   ├── fileService.ts  # 파일 조작
+│   └── monacoService.ts # Monaco 에디터 관리
+├── hooks/              # 커스텀 훅
+│   ├── useZipHandler.ts
+│   ├── useFileSystem.ts
+│   ├── useKeyboardShortcuts.ts
+│   └── useMonaco.ts
+├── types/              # TypeScript 타입 정의
+│   ├── file.types.ts
+│   ├── editor.types.ts
+│   └── index.ts
+├── utils/              # 유틸리티 함수
+│   ├── fileUtils.ts
+│   ├── treeUtils.ts
+│   ├── constants.ts
+│   └── monacoConfig.ts
+└── setup/              # 설정 파일
+    └── monacoWorkers.ts
 ```
 
 ## 기술 스택
@@ -51,7 +58,7 @@
 - **React Hooks** - Functional Component 기반, Custom Hooks 활용
 - **Styled Components** - CSS-in-JS로 컴포넌트 단위 스타일링
 
-### Frontend 아키텍처 (Production Ready)
+### Frontend 아키텍처
 
 - **React 18** - Concurrent Features, Automatic Batching
 - **Vite** - 빠른 HMR, Tree Shaking 최적화
@@ -70,7 +77,7 @@
 - **번들 크기**: Monaco 지연 로딩으로 초기 로딩 < 2초
 - **메모리 관리**: WeakSet 활용, 탭 닫힐 때 모델 자동 정리
 
-### 🔄 재사용 가능한 아키텍처 (Production 고려사항)
+### 재사용 가능한 아키텍처 (Production 고려사항)
 
 #### Monaco Editor 바인딩 재사용
 
@@ -97,13 +104,6 @@ import { FileUploadArea } from "./components/FileUpload";
 import { ZipService, FileService } from "./services";
 ```
 
-### 확장 가능한 설계 원칙
-
-- **단일 책임 원칙**: 각 서비스는 하나의 역할만 담당
-- **의존성 주입**: 테스트 가능하고 교체 가능한 구조
-- **인터페이스 분리**: TypeScript 인터페이스로 계약 정의
-- **개방-폐쇄 원칙**: 새로운 파일 타입, 에디터 기능 쉽게 추가 가능
-
 ## 과제 요구사항 체크리스트
 
 ### Purpose (목적 달성)
@@ -124,7 +124,7 @@ import { ZipService, FileService } from "./services";
   - [x] 불필요한 렌더링 방지 (React.memo, useCallback)
   - [x] 번들 크기 최적화 (Monaco 지연 로딩)
 
-### Extras (선택 사항 - 모두 구현)
+### Extras (선택 사항)
 
 - [x] **10,000개 이상 파일** 최적화 (가상 스크롤링)
 - [x] **파일/폴더 추가/삭제** 지원
