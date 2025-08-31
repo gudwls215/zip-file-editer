@@ -5,7 +5,6 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { FixedSizeList as List } from "react-window";
 import addFileIcon from "../../assets/add_file.svg";
 import addFolderIcon from "../../assets/add_folder.svg";
 import deleteIcon from "../../assets/delete.svg";
@@ -87,48 +86,55 @@ const flattenTree = (
 const TreeItem: React.FC<{
   index: number;
   style: React.CSSProperties;
-  data: {
-    items: VirtualTreeNode[];
-    onFileClick: (path: string) => void;
-    onFolderToggle: (path: string) => void;
-    onAddFile: (parentPath: string, defaultName?: string) => void;
-    onAddFolder: (parentPath: string, defaultName?: string) => void;
-    onDelete: (path: string, isFolder: boolean) => void;
-  };
-}> = ({ index, style, data }) => {
-  const item = data.items[index];
+  items: VirtualTreeNode[];
+  onFileClick: (path: string) => void;
+  onFolderToggle: (path: string) => void;
+  onAddFile: (parentPath: string, defaultName?: string) => void;
+  onAddFolder: (parentPath: string, defaultName?: string) => void;
+  onDelete: (path: string, isFolder: boolean) => void;
+}> = ({
+  index,
+  style,
+  items,
+  onFileClick,
+  onFolderToggle,
+  onAddFile,
+  onAddFolder,
+  onDelete,
+}) => {
+  const item = items[index];
   const isFolder = item.type === "folder";
 
   const handleClick = useCallback(() => {
     if (isFolder) {
-      data.onFolderToggle(item.path);
+      onFolderToggle(item.path);
     } else {
-      data.onFileClick(item.path);
+      onFileClick(item.path);
     }
-  }, [isFolder, item.path, data]);
+  }, [isFolder, item.path, onFileClick, onFolderToggle]);
 
   const handleAddFile = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      data.onAddFile(item.path);
+      onAddFile(item.path);
     },
-    [item.path, data]
+    [item.path, onAddFile]
   );
 
   const handleAddFolder = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      data.onAddFolder(item.path);
+      onAddFolder(item.path);
     },
-    [item.path, data]
+    [item.path, onAddFolder]
   );
 
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      data.onDelete(item.path, isFolder);
+      onDelete(item.path, isFolder);
     },
-    [item.path, isFolder, data]
+    [item.path, isFolder, onDelete]
   );
 
   const paddingLeft = item.level * 16 + 8;
@@ -245,7 +251,7 @@ export const VirtualFileTree: React.FC<VirtualFileTreeProps> = ({
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set()
   );
-  const listRef = useRef<List>(null);
+  const listRef = useRef<any>(null);
 
   // 폴더 토글 핸들러
   const handleFolderToggle = useCallback(
@@ -275,26 +281,6 @@ export const VirtualFileTree: React.FC<VirtualFileTreeProps> = ({
     return result;
   }, [files, expandedFolders, searchQuery]);
 
-  // 리스트 데이터
-  const listData = useMemo(
-    () => ({
-      items: flatItems,
-      onFileClick,
-      onFolderToggle: handleFolderToggle,
-      onAddFile,
-      onAddFolder,
-      onDelete,
-    }),
-    [
-      flatItems,
-      onFileClick,
-      handleFolderToggle,
-      onAddFile,
-      onAddFolder,
-      onDelete,
-    ]
-  );
-
   // 검색어 변경시 맨 위로 스크롤
   useEffect(() => {
     if (searchQuery && listRef.current) {
@@ -319,17 +305,31 @@ export const VirtualFileTree: React.FC<VirtualFileTreeProps> = ({
 
   return (
     <div style={{ height, width: "100%" }}>
-      <List
-        ref={listRef}
-        height={height}
-        itemCount={flatItems.length}
-        itemSize={itemHeight}
-        itemData={listData}
-        overscanCount={10} // 성능 최적화: 화면 밖 10개 아이템까지 미리 렌더링
-        width="100%"
+      <div
+        style={{
+          height: height,
+          overflow: "auto",
+          width: "100%",
+        }}
       >
-        {TreeItem}
-      </List>
+        {flatItems.map((item, index) => (
+          <TreeItem
+            key={`${item.path}-${index}`}
+            index={index}
+            style={{
+              height: itemHeight,
+              display: "flex",
+              alignItems: "center",
+            }}
+            items={flatItems}
+            onFileClick={onFileClick}
+            onFolderToggle={handleFolderToggle}
+            onAddFile={onAddFile}
+            onAddFolder={onAddFolder}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
     </div>
   );
 };

@@ -20,7 +20,7 @@ interface OptimizedFileTreeProps {
 }
 
 export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
-  maxItemsBeforeVirtual = 10, // 테스트를 위해 10으로 낮춤 (원래 1000)
+  maxItemsBeforeVirtual = 1000, // 1000개 이상일 때 가상 스크롤링 사용
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
