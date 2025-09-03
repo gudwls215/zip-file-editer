@@ -16,27 +16,47 @@ import {
 import { useEditorStore } from "../../store/editorStore";
 
 interface OptimizedFileTreeProps {
-  maxItemsBeforeVirtual?: number; // 이 개수 이상이면 Virtual Tree 사용
+  maxItemsBeforeVirtual?: number; // 가상화 활성화 임계값
 }
 
+/**
+ * OptimizedFileTree - 적응형 성능 최적화 파일 트리
+ *
+ * 핵심 최적화 전략:
+ * - 임계값 기반 렌더링: 1000개 미만은 일반 트리, 이상은 가상 스크롤링
+ * - 검색 최적화: 실시간 필터링으로 대용량 파일 처리
+ * - 메모이제이션: useMemo로 비용이 큰 계산 결과 캐싱
+ *
+ * 기술적 특징:
+ * - 하이브리드 렌더링: 파일 수에 따른 동적 컴포넌트 선택
+ * - 검색 기능: 실시간 파일명 필터링
+ * - 파일 타입 감지: 확장자 기반 언어 및 바이너리 파일 판별
+ *
+ * 성능 지표:
+ * - < 1000개: 일반 DOM 렌더링으로 빠른 응답
+ * - ≥ 1000개: 가상 스크롤링으로 메모리 효율성
+ * - 검색: O(n) 필터링이지만 사용자 입력 시에만 실행
+ */
 export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
-  maxItemsBeforeVirtual = 1000, // 1000개 이상일 때 가상 스크롤링 사용
+  maxItemsBeforeVirtual = 1000, // 임계값: 1000개 이상일 때 가상화 활성화
 }) => {
+  // 검색 상태 관리
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // 스토어 상태 및 액션
   const { fileTree, addFile, addFolder, zipFile, setFileTree } = useZipStore();
   const { addTab } = useEditorStore();
 
-  // 총 파일 개수 계산 (임시 구현)
+  // 📊 파일 개수 계산 - 재귀적으로 모든 파일 카운트
   const getTotalFileCount = useCallback(() => {
     const countFiles = (nodes: any[]): number => {
       return nodes.reduce((count, node) => {
         if (node.type === "file") {
-          return count + 1;
+          return count + 1; // 파일인 경우 카운트 증가
         } else if (node.children) {
-          return count + countFiles(node.children);
+          return count + countFiles(node.children); // 폴더인 경우 재귀 호출
         }
         return count;
       }, 0);
@@ -44,7 +64,7 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
     return countFiles(fileTree);
   }, [fileTree]);
 
-  // 총 파일 개수 계산
+  // 📈 총 파일 개수 - useMemo로 불필요한 재계산 방지
   const totalFileCount = useMemo(
     () => getTotalFileCount(),
     [getTotalFileCount]

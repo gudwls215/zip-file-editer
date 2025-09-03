@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from "react";
-// Import Monaco workers setup only when Monaco Editor is loaded
+// Monaco Editor가 로드될 때만 Monaco workers 설정 import
 import "../../setup/monacoWorkers";
 import * as monaco from "monaco-editor";
 import { useEditorStore } from "../../store/editorStore";
@@ -7,12 +7,41 @@ import { useZipStore } from "../../store/zipStore";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { MonacoService } from "../../services/monacoService";
 
+/**
+ * MonacoEditor - VS Code 수준의 코드 에디터 컴포넌트
+ *
+ * 핵심 역할:
+ * - Monaco Editor 인스턴스 생성 및 라이프사이클 관리
+ * - 다중 탭 환경에서 파일별 독립적인 편집 모델 유지
+ * - 실시간 내용 변경 감지 및 isDirty 상태 관리
+ * - 키보드 단축키 처리 (Ctrl+S, Ctrl+Z, Ctrl+W 등)
+ *
+ * 고급 기능:
+ * - Multi-model editor: 탭별 독립적인 Monaco 모델
+ * - View state 보존: 커서 위치, 스크롤 위치, 선택 영역
+ * - 프로그래밍적 변경 vs 사용자 변경 구분
+ * - 메모리 누수 방지: 닫힌 탭의 모델 자동 정리
+ *
+ * 성능 최적화:
+ * - isProgrammaticChange로 무한 루프 방지
+ * - 모델 재사용으로 편집 히스토리 유지
+ * - 탭 전환 시 뷰 상태 저장/복원
+ */
 export const MonacoEditor: React.FC = () => {
+  // 무한 루프 방지: 프로그래밍적 변경 vs 사용자 입력 구분
   const isProgrammaticChange = useRef(false);
+
+  // 에디터 인스턴스 및 DOM 참조
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // 싱글톤 서비스 인스턴스
   const monacoSvcRef = useRef(MonacoService.getInstance());
+
+  // 탭 전환 시 뷰 상태 관리용
   const prevActiveIdRef = useRef<string | null>(null);
+
+  // 스토어 상태 및 액션
   const {
     getActiveTab,
     updateTabContent,
@@ -28,22 +57,29 @@ export const MonacoEditor: React.FC = () => {
 
   const activeTab = getActiveTab();
 
-  // Debug logging
+  // 디버깅용 로그 (인터뷰 시 제거 고려)
   console.log("MonacoEditor render - activeTab:", activeTab?.name);
 
+  // 파일 저장 핸들러 - Ctrl+S 키 바인딩
   const handleSave = useCallback(() => {
     if (activeTab) {
       const value = editorRef.current?.getValue() ?? activeTab.content;
       console.log("Saving tab:", activeTab.name);
-      // snapshot saved content for downloads
+
+      // ZIP 다운로드용 스냅샷 저장
       setSavedChange(activeTab.path, value);
+
+      // 에디터 내용이 변경된 경우에만 업데이트
       if (value !== activeTab.content) {
         updateTabContent(activeTab.id, value);
       }
+
+      // 저장 완료 표시 (isDirty = false)
       markTabSaved(activeTab.id);
     }
   }, [activeTab, markTabSaved, setSavedChange, updateTabContent]);
 
+  // 탭 닫기 핸들러 - 저장되지 않은 변경사항 확인
   const handleCloseTab = useCallback(() => {
     if (activeTab) {
       if (activeTab.isDirty) {
@@ -80,16 +116,16 @@ export const MonacoEditor: React.FC = () => {
     }
   }, [updateTabContent]);
 
-  // Create Monaco Editor instance
+  // Monaco Editor 인스턴스 생성
   useEffect(() => {
     if (!containerRef.current || editorRef.current) return;
 
-    // Ensure Monaco service is initialized
+    // Monaco 서비스 초기화 확인
     monacoSvcRef.current.initialize().catch(() => {
       /* no-op */
     });
 
-    // Create editor without initial value; we'll set model per-tab below
+    // 초기값 없이 에디터 생성; 탭별로 모델을 설정할 예정
     const editor = monaco.editor.create(containerRef.current, {
       theme: theme,
       fontSize,
@@ -114,7 +150,7 @@ export const MonacoEditor: React.FC = () => {
     editorRef.current = editor;
     console.log("Monaco Editor initialized successfully");
 
-    // Setup keyboard shortcuts
+    // 키보드 단축키 설정
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });

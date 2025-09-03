@@ -24,10 +24,11 @@ src/
 │   │   └── DownloadButton.tsx
 │   └── Monaco/         # Monaco 에디터 래퍼
 │       └── MonacoEditorComponent.tsx
-├── store/              # 상태 관리 (Zustand)
-│   ├── editorStore.ts  # 에디터 상태
-│   ├── zipStore.ts     # ZIP 파일 상태
-│   └── fileStore.ts    # 파일 시스템 상태
+├── store/              # 상태 관리 (Zustand + 한국어 주석)
+│   ├── editorStore.ts  # 에디터 상태 - 탭 시스템, Monaco 설정, isDirty 추적
+│   ├── zipStore.ts     # ZIP 파일 상태 - 파일 트리, 변경사항 추적, do/undo 지원
+│   ├── fileStore.ts    # 파일 시스템 상태 - 파일 목록, 선택 상태, 트리 구조
+│   └── index.ts        # 스토어 통합 내보내기 - 의존성 관계 명시적 관리
 ├── services/           # 비즈니스 로직
 │   ├── zipService.ts   # ZIP 파일 처리
 │   ├── fileService.ts  # 파일 조작

@@ -3,9 +3,33 @@ import JSZip from "jszip";
 import { useZipStore } from "../../store/zipStore";
 import { useEditorStore } from "../../store/editorStore";
 
+/**
+ * 📁 FileUploadArea - 파일 업로드 및 다운로드 컴포넌트
+ *
+ * 핵심 기능:
+ * - Drag & Drop 및 클릭 업로드 지원
+ * - ZIP 파일 검증 및 파싱
+ * - 수정된 ZIP 파일 다운로드
+ * - 업로드 전 에디터 상태 정리
+ *
+ * 기술적 특징:
+ * - File API와 ArrayBuffer 활용: 브라우저 네이티브 파일 처리
+ * - JSZip 라이브러리: ZIP 파일 파싱 및 재생성
+ * - 비동기 처리: 대용량 파일 업로드 시 UI 블로킹 방지
+ * - 메모리 관리: ArrayBuffer 원본 보존으로 다운로드 최적화
+ *
+ * UX 고려사항:
+ * - 드래그 상태 시각적 피드백
+ * - 로딩 상태 표시
+ * - 에러 상태 처리 및 사용자 안내
+ * - ZIP 파일만 허용하는 명확한 제약
+ */
 export const FileUploadArea: React.FC = () => {
+  // UI 상태 관리
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 전역 상태 연결
   const {
     setZipData,
     setError,
@@ -18,8 +42,24 @@ export const FileUploadArea: React.FC = () => {
 
   const { closeAllTabs } = useEditorStore();
 
+  /**
+   * 파일 업로드 핸들러
+   *
+   * 처리 과정:
+   * 1. ZIP 파일 형식 검증
+   * 2. 기존 에디터 탭 정리 (메모리 누수 방지)
+   * 3. ArrayBuffer로 파일 읽기
+   * 4. JSZip으로 ZIP 구조 파싱
+   * 5. 전역 상태에 저장
+   *
+   * 에러 처리:
+   * - 파일 형식 불일치
+   * - ZIP 파일 손상
+   * - 메모리 부족 등
+   */
   const handleFileUpload = useCallback(
     async (file: File) => {
+      // ZIP 파일 형식 검증
       if (!file.name.toLowerCase().endsWith(".zip")) {
         setError("Please upload a ZIP file");
         return;
@@ -30,16 +70,21 @@ export const FileUploadArea: React.FC = () => {
 
       try {
         // 새로운 ZIP 파일 로드 전에 모든 에디터 탭 닫기
+        // → 메모리 누수 방지 및 상태 정리
         closeAllTabs();
 
+        // File → ArrayBuffer 변환 (비동기)
         const arrayBuffer = await file.arrayBuffer();
         const zip = new JSZip();
+
+        // ZIP 파일 구조 파싱
         const zipData = await zip.loadAsync(arrayBuffer);
 
+        // 전역 상태에 저장 (원본 버퍼도 보존)
         setZipData({
           zipFile: zipData,
           fileName: file.name,
-          originalBuffer: arrayBuffer,
+          originalBuffer: arrayBuffer, // 다운로드 시 재사용
         });
       } catch (error) {
         console.error("Error processing ZIP file:", error);
@@ -51,13 +96,21 @@ export const FileUploadArea: React.FC = () => {
     [setZipData, setError, setLoading, closeAllTabs]
   );
 
+  /**
+   * 수정된 ZIP 파일 다운로드 핸들러
+   *
+   * 처리 과정:
+   * 1. 현재 ZIP 상태에서 새로운 ZIP 생성
+   * 2. Blob으로 변환하여 다운로드 링크 생성
+   * 3. 브라우저 다운로드 트리거
+   */
   const handleDownload = useCallback(async () => {
     if (!zipFile || !fileName) return;
 
     try {
       setLoading(true);
 
-      // Create new zip with modified files
+      // 수정된 파일들로 새로운 ZIP 생성
       const modifiedZip = new JSZip();
 
       // Copy all original files
