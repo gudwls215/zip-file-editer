@@ -45,6 +45,7 @@ export const MonacoEditor: React.FC = () => {
   }, [activeTab, markTabSaved, setSavedChange, updateTabContent]);
 
   const handleCloseTab = useCallback(() => {
+    console.log("Attempting to close tab:", activeTab?.name);
     if (activeTab) {
       if (activeTab.isDirty) {
         const shouldClose = window.confirm(
@@ -52,6 +53,10 @@ export const MonacoEditor: React.FC = () => {
         );
         if (!shouldClose) return;
       }
+
+      console.log("Closing tab:", activeTab.name);
+      // Store closed tab for potential restoration
+      useEditorStore.getState().addRecentlyClosedTab(activeTab);
       removeTab(activeTab.id);
     }
   }, [activeTab, removeTab]);
@@ -67,7 +72,17 @@ export const MonacoEditor: React.FC = () => {
         ?.getAction("editor.action.startFindReplaceAction")
         ?.run();
     },
+    onUndo: () => {
+      editorRef.current?.trigger("keyboard", "undo", {});
+    },
+    onRedo: () => {
+      editorRef.current?.trigger("keyboard", "redo", {});
+    },
+    onRestoreRecentlyClosedTab: () => {
+      useEditorStore.getState().restoreRecentlyClosedTab();
+    },
   });
+
 
   const handleEditorChange = useCallback(() => {
     if (!editorRef.current) return;
@@ -114,25 +129,6 @@ export const MonacoEditor: React.FC = () => {
     editorRef.current = editor;
     console.log("Monaco Editor initialized successfully");
 
-    // Setup keyboard shortcuts
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      handleSave();
-    });
-
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ,
-      () => {
-        editor.trigger("keyboard", "redo", {});
-      }
-    );
-
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {
-      editor.trigger("keyboard", "undo", {});
-    });
-
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => {
-      handleCloseTab();
-    });
 
     // Listen for content changes (ignore programmatic updates)
     editor.onDidChangeModelContent(() => {

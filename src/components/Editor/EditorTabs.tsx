@@ -200,6 +200,7 @@ export const EditorTabs: React.FC = memo(() => {
 
   const handleTabClose = useCallback(
     (tabId: string) => {
+      useEditorStore.getState().addRecentlyClosedTab(useEditorStore.getState().getTabById(tabId)!);
       removeTab(tabId);
     },
     [removeTab]

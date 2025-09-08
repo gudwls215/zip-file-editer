@@ -8,11 +8,14 @@ interface KeyboardShortcuts {
   onToggleSidebar?: () => void;
   onSearch?: () => void;
   onReplace?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onRestoreRecentlyClosedTab?: () => void;
 }
 
 export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    const { ctrlKey, metaKey, key } = event;
+    const { ctrlKey, metaKey, shiftKey, key } = event;
     const isCtrlOrCmd = ctrlKey || metaKey;
 
     if (!isCtrlOrCmd) return;
@@ -26,7 +29,7 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
         event.preventDefault();
         shortcuts.onOpen?.();
         break;
-      case 'w':
+      case 'q':
         event.preventDefault();
         shortcuts.onCloseTab?.();
         break;
@@ -45,6 +48,22 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
       case 'h':
         event.preventDefault();
         shortcuts.onReplace?.();
+        break;
+      case 'z':
+        event.preventDefault();
+        shortcuts.onUndo?.();
+        break;
+      case 'y':
+        event.preventDefault();
+        shortcuts.onRedo?.();
+        break;
+      
+      case 'r':
+        if (shiftKey) {
+          // Ctrl+Shift+R: 최근 닫힌 탭 복구
+          event.preventDefault();
+          shortcuts.onRestoreRecentlyClosedTab?.();
+        }
         break;
       default:
         break;

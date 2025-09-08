@@ -21,6 +21,7 @@ export interface EditorState {
   fontSize: number; // 글꼴 크기
   wordWrap: boolean; // 줄 바꿈 여부
   minimap: boolean; // 미니맵 표시 여부
+  recentlyClosedTabs: EditorTab[]; // 최근에 닫은 탭들 (복원용)
 }
 
 export interface EditorActions {
@@ -33,6 +34,10 @@ export interface EditorActions {
   setTabViewState: (tabId: string, viewState: any | null) => void;
   closeAllTabs: () => void;
   closeDirtyTabs: () => EditorTab[]; // 수정된 탭들 닫기 (저장되지 않은 변경사항 처리)
+  getTabById: (tabId: string) => EditorTab | undefined;
+
+  addRecentlyClosedTab: (tabData: EditorTab) => void; // 최근에 닫은 탭 추가
+  restoreRecentlyClosedTab: () => void; // 가장 최근에 닫은 탭 복원
 
   // 에디터 설정
   setTheme: (theme: string) => void;
@@ -69,6 +74,7 @@ export const useEditorStore = create<EditorStore>()(
       fontSize: 14,
       wordWrap: true,
       minimap: false,
+      recentlyClosedTabs: [],
 
       // 액션들
       addTab: (tabData) => {
@@ -280,9 +286,40 @@ export const useEditorStore = create<EditorStore>()(
       closeAllFiles: () => {
         get().closeAllTabs();
       },
+
+
+      addRecentlyClosedTab: (tabData) => {
+        set((state) => {
+          state.recentlyClosedTabs = [
+            tabData,
+            ...state.recentlyClosedTabs.filter((t) => t.id !== tabData.id),
+          ].slice(0, 10); // 최대 10개까지 저장
+        });
+      },
+
+      restoreRecentlyClosedTab: () => {
+        const tab = get().recentlyClosedTabs[0];
+        console.log("최근에 닫은 탭 복원 시도:", tab);
+        if (tab) {
+          get().addTab({
+            name: tab.name,
+            path: tab.path,
+            content: tab.content,
+            language: tab.language,
+          });
+          set((state) => {
+            state.recentlyClosedTabs = state.recentlyClosedTabs.slice(1);
+          });
+        }
+      },
+
+      getTabById: (tabId) => {
+        return get().tabs.find((tab) => tab.id === tabId);
+      }
     }))
   )
 );
+  
 
 // 성능 최적화를 위한 셀렉터들
 export const useActiveTab = () =>
