@@ -187,9 +187,7 @@ export const FileUploadArea: React.FC = () => {
   const hasStructuralChanges = useZipStore(
     (state) => state.hasStructuralChanges
   );
-  const hasUnsavedChanges = useEditorStore((state) =>
-    state.tabs.some((t) => t.isDirty)
-  );
+
   const hasSavedModifications = Object.keys(savedChanges).length > 0;
 
   // 다운로드 가능 조건: ZIP 파일이 있고, 로딩 중이 아니며, 실제 변경사항이 있을 때
