@@ -21,7 +21,7 @@ interface EditorTab {
 }
 
 /**
- * 🗃️ ZipStore - ZIP 파일 에디터의 중앙 상태 관리
+ * ZipStore - ZIP 파일 에디터의 중앙 상태 관리
  *
  * 설계 철학:
  * - Single Source of Truth: 모든 ZIP 관련 상태를 중앙 집중 관리
@@ -41,27 +41,27 @@ interface EditorTab {
  * - 탭 기반 지연 로딩으로 대용량 ZIP 파일 지원
  */
 interface ZipStore {
-  // 📦 ZIP 관련 상태
+  // ZIP 관련 상태
   zipFile: JSZip | null; // 현재 로드된 ZIP 파일 객체
   fileName: string | null; // ZIP 파일명
   originalBuffer: ArrayBuffer | null; // 원본 ZIP 데이터 (되돌리기용)
   fileTree: FileNode[]; // 파일 트리 구조
 
-  // 💾 변경사항 추적 시스템
+  // 변경사항 추적 시스템
   // 저장된 변경사항 스냅샷 (Ctrl+S 시 저장됨) - do/undo의 저장 지점
   savedChanges: Record<string, string>;
   // 구조적 변경사항 추적 (파일/폴더 추가/삭제) - 전체적인 undo 범위
   hasStructuralChanges: boolean;
 
-  // 📝 에디터 상태
+  // 에디터 상태
   tabs: EditorTab[]; // 열린 탭들
   activeTabId: string | null; // 활성 탭 ID
 
-  // 🎨 UI 상태
+  // UI 상태
   isLoading: boolean;
   error: string | null;
 
-  // 🔧 액션들 - 상태 변경 메서드들
+  // 액션들 - 상태 변경 메서드들
   setZipData: (data: {
     zipFile: JSZip;
     fileName: string;
@@ -75,13 +75,13 @@ interface ZipStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // 💾 저장된 변경사항 액션들 - do/undo 저장 지점 관리
+  // 저장된 변경사항 액션들 - do/undo 저장 지점 관리
   setSavedChange: (path: string, content: string) => void;
   removeSavedChange: (path: string) => void;
   clearSavedChanges: () => void;
   saveFile: (path: string, content: string) => void; // 파일 저장 시 do/undo 상태 리셋
 
-  // 🏗️ 파일/폴더 변경 액션들 - 구조적 undo 지점 생성
+  // 파일/폴더 변경 액션들 - 구조적 undo 지점 생성
   addFolder: (parentPath: string | null, folderName: string) => void;
   addFile: (
     parentPath: string | null,
@@ -93,7 +93,7 @@ interface ZipStore {
 }
 
 /**
- * 🏪 ZipStore 인스턴스 생성
+ * ZipStore 인스턴스 생성
  *
  * 특징:
  * - Zustand 기반 경량 상태 관리 (Redux 대비 90% 적은 보일러플레이트)
@@ -101,7 +101,7 @@ interface ZipStore {
  * - 개발자 도구 지원 (Redux DevTools 호환)
  */
 export const useZipStore = create<ZipStore>((set, get) => ({
-  // 🏁 초기 상태
+  // 초기 상태
   zipFile: null,
   fileName: null,
   originalBuffer: null,
@@ -113,10 +113,10 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   isLoading: false,
   error: null,
 
-  // 🔧 액션 메서드들
+  // 액션 메서드들
 
   /**
-   * 📦 ZIP 데이터 설정 - 새로운 ZIP 파일 로드
+   * ZIP 데이터 설정 - 새로운 ZIP 파일 로드
    *
    * 처리 과정:
    * 1. 기존 상태 완전 초기화 (메모리 정리)
@@ -138,7 +138,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       activeTabId: null,
     });
 
-    // 🌳 파일 트리 구성
+    // 파일 트리 구성
     const tree = buildFileTree(zipFile);
     set({ fileTree: tree });
   },
@@ -146,7 +146,7 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   setFileTree: (tree) => set({ fileTree: tree }),
 
   /**
-   * 📄 탭 추가 - 새로운 파일 열기
+   * 탭 추가 - 새로운 파일 열기
    *
    * 중복 처리:
    * - 이미 열린 파일: 해당 탭 활성화

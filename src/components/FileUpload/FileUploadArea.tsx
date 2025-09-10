@@ -113,7 +113,7 @@ export const FileUploadArea: React.FC = () => {
       // 수정된 파일들로 새로운 ZIP 생성
       const modifiedZip = new JSZip();
 
-      // Copy all original files
+      // 모든 원본 파일 복사
       Object.keys(zipFile.files).forEach((path) => {
         const file = zipFile.files[path];
         if (!file.dir) {
@@ -121,13 +121,13 @@ export const FileUploadArea: React.FC = () => {
         }
       });
 
-      // Apply only saved changes (저장된 변경사항만 반영)
+      // 저장된 변경사항만 반영
       const { savedChanges } = useZipStore.getState();
       Object.entries(savedChanges).forEach(([path, content]) => {
         modifiedZip.file(path, content);
       });
 
-      // Generate and download
+      // 생성 및 다운로드
       const blob = await modifiedZip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
