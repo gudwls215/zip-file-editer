@@ -49,7 +49,7 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
   const { fileTree, addFile, addFolder, zipFile, setFileTree } = useZipStore();
   const { addTab } = useEditorStore();
 
-  // 📊 파일 개수 계산 - 재귀적으로 모든 파일 카운트
+  // 파일 개수 계산 - 재귀적으로 모든 파일 카운트
   const getTotalFileCount = useCallback(() => {
     const countFiles = (nodes: any[]): number => {
       return nodes.reduce((count, node) => {
@@ -112,36 +112,36 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
         const fileName = path.split("/").pop() || path;
         console.log("Processing file:", fileName);
 
-        // Determine file category
+        // 파일 카테고리 결정
         const isImage = isImageFile(fileName);
         const isBinary = isBinaryFile(fileName);
 
         if (isBinary && !isImage) {
           console.log("Binary file detected (non-image)");
-          // For non-image binary files, show a message
+          // 이미지가 아닌 바이너리 파일의 경우 메시지 표시
           addTab({
             name: fileName,
             path: path,
-            content: `// Binary file: ${fileName}\n// This file cannot be edited as text.\n// File type: ${
-              fileName.split(".").pop()?.toUpperCase() || "Unknown"
+            content: `// 바이너리 파일: ${fileName}\n// 이 파일은 텍스트로 편집할 수 없습니다.\n// 파일 형식: ${
+              fileName.split(".").pop()?.toUpperCase() || "알 수 없음"
             }`,
             language: "plaintext",
           });
         } else if (isImage) {
           console.log("Image file detected");
-          // For images, create a special tab that shows the image
+          // 이미지의 경우 이미지를 표시하는 특별한 탭 생성
           const blob = await file.async("blob");
           const imageUrl = URL.createObjectURL(blob);
 
           addTab({
             name: fileName,
             path: path,
-            content: imageUrl, // Store image URL as content
+            content: imageUrl, // 이미지 URL을 내용으로 저장
             language: "image",
           });
         } else {
           console.log("Text file detected, loading content...");
-          // For text files (including SVG), load the content
+          // 텍스트 파일(SVG 포함)의 경우 내용 로드
           try {
             const content = await file.async("string");
             const language = getFileLanguage(fileName);
@@ -166,23 +166,23 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
               "Failed to load as text, treating as binary:",
               textError
             );
-            // If text loading fails, treat as binary
+            // 텍스트 로딩 실패 시 바이너리로 처리
             addTab({
               name: fileName,
               path: path,
-              content: `// Error loading file: ${fileName}\n// This file might be corrupted or in an unsupported format.`,
+              content: `// 파일 로딩 오류: ${fileName}\n// 이 파일이 손상되었거나 지원되지 않는 형식일 수 있습니다.`,
               language: "plaintext",
             });
           }
         }
       } catch (error) {
         console.error("Error loading file:", error);
-        // Show error in editor
+        // 에디터에 오류 표시
         const fileName = path.split("/").pop() || path;
         addTab({
           name: fileName,
           path: path,
-          content: `// Error loading file: ${fileName}\n// ${
+          content: `// 파일 로딩 오류: ${fileName}\n// ${
             error instanceof Error ? error.message : "Unknown error occurred"
           }`,
           language: "plaintext",
@@ -243,9 +243,9 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
 
   // 삭제 핸들러
   const handleDelete = useCallback((path: string, isFolder: boolean) => {
-    const confirmMsg = `Are you sure you want to delete ${
-      isFolder ? "folder" : "file"
-    } "${path}"?`;
+    const confirmMsg = `정말로 ${
+      isFolder ? "폴더" : "파일"
+    } "${path}"을(를) 삭제하시겠습니까?`;
     if (window.confirm(confirmMsg)) {
       // TODO: 실제 삭제 구현
       console.log("Delete:", path, isFolder ? "folder" : "file");

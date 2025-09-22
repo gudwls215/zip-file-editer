@@ -11,31 +11,31 @@ import { MonacoMemoryManager } from "../../services/monacoMemoryManager";
 /**
  * MonacoEditor - Microsoft VS Code와 동일한 수준의 고급 코드 에디터 컴포넌트
  *
- * 🎯 핵심 기능:
+ * 핵심 기능:
  * - Monaco Editor 인스턴스의 전체 생명주기 관리 (생성, 업데이트, 해제)
  * - 다중 탭 환경에서 각 파일별로 독립적인 편집 모델과 상태 유지
  * - 사용자 입력에 따른 실시간 내용 변경 감지 및 수정 상태(isDirty) 추적
  * - 표준 IDE 키보드 단축키 지원 (저장, 실행취소, 재실행, 탭 닫기 등)
  *
- * 🚀 고급 기능:
+ * 고급 기능:
  * - Multi-model 아키텍처: 탭별로 완전히 독립된 Monaco 편집 모델 관리
  * - View State 영속성: 커서 위치, 스크롤 위치, 선택 영역, 폴딩 상태 보존
  * - 프로그래밍적 변경과 사용자 입력 구분으로 무한 루프 및 의도치 않은 상태 변경 방지
  * - 메모리 누수 방지: 닫힌 탭의 Monaco 모델 자동 정리 및 가비지 컬렉션
  * - 언어별 특화 자동완성 및 IntelliSense 기능
  *
- * ⚡ 성능 최적화:
+ * 성능 최적화:
  * - isProgrammaticChange 플래그로 재귀 호출 및 무한 루프 방지
  * - 모델 재사용을 통한 편집 히스토리(Undo/Redo) 및 검색 히스토리 유지
  * - 탭 전환 시 뷰 상태의 효율적인 저장 및 복원
  * - 구조적 공유를 통한 메모리 사용량 최적화
  */
 export const MonacoEditor: React.FC = () => {
-  // 🔄 무한 루프 방지: 프로그래밍적 변경과 사용자 직접 입력을 구분하는 플래그
+  // 무한 루프 방지: 프로그래밍적 변경과 사용자 직접 입력을 구분하는 플래그
   // 에디터 내용을 코드로 변경할 때 true로 설정하여 onChange 이벤트 무시
   const isProgrammaticChange = useRef(false);
 
-  // 🎛️ Monaco Editor 인스턴스 및 DOM 컨테이너 참조
+  // Monaco Editor 인스턴스 및 DOM 컨테이너 참조
   // editorRef: Monaco Editor의 실제 인스턴스 (API 호출용)
   // containerRef: 에디터가 마운트될 DOM 엘리먼트
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -44,15 +44,15 @@ export const MonacoEditor: React.FC = () => {
   // 🧠 Monaco 메모리 관리자 인스턴스
   const memoryManagerRef = useRef(MonacoMemoryManager.getInstance());
 
-  // 🔧 Monaco 관련 서비스의 싱글톤 인스턴스 
+  // Monaco 관련 서비스의 싱글톤 인스턴스 
   // 언어 서버, 워커 스레드, 테마 등을 관리하는 서비스
   const monacoSvcRef = useRef(MonacoService.getInstance());
 
-  // 📂 탭 전환 시 이전 활성 탭의 뷰 상태 저장을 위한 추적 변수
+  // 탭 전환 시 이전 활성 탭의 뷰 상태 저장을 위한 추적 변수
   // 커서 위치, 스크롤 위치, 선택 영역 등을 보존하기 위해 사용
   const prevActiveIdRef = useRef<string | null>(null);
 
-  // 🏪 Zustand 스토어에서 에디터 상태 및 액션들을 가져옴
+  // Zustand 스토어에서 에디터 상태 및 액션들을 가져옴
   const {
     getActiveTab,        // 현재 활성화된 탭 정보 조회
     updateTabContent,    // 탭의 내용 업데이트 (isDirty 상태 포함)
@@ -69,10 +69,10 @@ export const MonacoEditor: React.FC = () => {
   // 현재 활성화된 탭 정보 조회
   const activeTab = getActiveTab();
 
-  // 🐛 개발 시 디버깅용 로그 (프로덕션에서는 제거 권장)
+  // 개발 시 디버깅용 로그 (프로덕션에서는 제거 권장)
   console.log("MonacoEditor 렌더링 - 활성 탭:", activeTab?.name);
 
-  // 💾 파일 저장 핸들러 - Ctrl+S 키 바인딩 및 저장 로직
+  // 파일 저장 핸들러 - Ctrl+S 키 바인딩 및 저장 로직
   // 현재 활성 탭의 내용을 저장하고 isDirty 상태를 false로 변경
   const handleSave = useCallback(() => {
     if (activeTab) {
@@ -94,7 +94,7 @@ export const MonacoEditor: React.FC = () => {
     }
   }, [activeTab, markTabSaved, setSavedChange, updateTabContent]);
 
-  // ❌ 탭 닫기 핸들러 - 저장되지 않은 변경사항 확인 후 탭 제거
+  // 탭 닫기 핸들러 - 저장되지 않은 변경사항 확인 후 탭 제거
   // 사용자가 실수로 작업 내용을 잃지 않도록 확인 다이얼로그 표시
   const handleCloseTab = useCallback(() => {
     if (activeTab) {
@@ -110,7 +110,7 @@ export const MonacoEditor: React.FC = () => {
     }
   }, [activeTab, removeTab]);
 
-  // ⌨️ 키보드 단축키 등록 - IDE 수준의 단축키 지원
+  // 키보드 단축키 등록 - IDE 수준의 단축키 지원
   useKeyboardShortcuts({
     onSave: handleSave,        // Ctrl+S: 현재 파일 저장
     onCloseTab: handleCloseTab, // Ctrl+W: 현재 탭 닫기
@@ -126,7 +126,7 @@ export const MonacoEditor: React.FC = () => {
     },
   });
 
-  // 📝 에디터 내용 변경 핸들러 - 사용자 입력에 따른 실시간 상태 업데이트
+  // 에디터 내용 변경 핸들러 - 사용자 입력에 따른 실시간 상태 업데이트
   const handleEditorChange = useCallback(() => {
     if (!editorRef.current) return; // 에디터가 초기화되지 않은 경우 무시
     if (isProgrammaticChange.current) return; // 프로그래밍적 변경인 경우 무시
@@ -141,10 +141,10 @@ export const MonacoEditor: React.FC = () => {
     }
   }, [updateTabContent]);
 
-  // 🚀 커스텀 자동완성 제공자 설정 함수
+  // 커스텀 자동완성 제공자 설정 함수
   // Monaco Editor에 언어별 특화된 코드 스니펫과 자동완성 기능을 등록
   const setupCustomAutocompletion = useCallback(() => {
-    // 📘 JavaScript 언어용 자동완성 강화
+    // JavaScript 언어용 자동완성 강화
     monaco.languages.registerCompletionItemProvider('javascript', {
       provideCompletionItems: (model, position) => {
         // 현재 커서 위치의 단어 정보 추출 (자동완성 범위 계산용)
@@ -212,7 +212,7 @@ export const MonacoEditor: React.FC = () => {
       }
     });
 
-    // 📗 TypeScript 언어용 자동완성 강화 (React 포함)
+    // TypeScript 언어용 자동완성 강화 (React 포함)
     monaco.languages.registerCompletionItemProvider('typescript', {
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position);
@@ -287,7 +287,7 @@ export const MonacoEditor: React.FC = () => {
       }
     });
 
-    // 🎨 CSS 언어용 자동완성
+    // CSS 언어용 자동완성
     monaco.languages.registerCompletionItemProvider('css', {
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position);
@@ -325,7 +325,7 @@ export const MonacoEditor: React.FC = () => {
     console.log("커스텀 자동완성 제공자 등록 완료");
   }, []);
 
-  // 🏗️ Monaco Editor 인스턴스 생성 및 초기화
+  // Monaco Editor 인스턴스 생성 및 초기화
   useEffect(() => {
     // 이미 에디터가 생성되었거나 컨테이너가 준비되지 않은 경우 무시
     if (!containerRef.current || editorRef.current) return;
@@ -337,7 +337,7 @@ export const MonacoEditor: React.FC = () => {
 
     // Monaco Editor 인스턴스 생성 - 고급 설정 포함
     const editor = monaco.editor.create(containerRef.current, {
-      // 🎨 기본 외관 설정
+      // 기본 외관 설정
       theme: theme,                                    // 에디터 테마 (다크/라이트)
       fontSize,                                        // 폰트 크기
       fontFamily:                                      // 코딩 폰트 우선순위
@@ -348,20 +348,20 @@ export const MonacoEditor: React.FC = () => {
       scrollBeyondLastLine: false,                     // 마지막 줄 이후 스크롤 방지
       wordWrap: wordWrap ? "on" : "off",              // 줄 바꿈 설정
       
-      // 📁 코드 구조 및 편집 기능
+      // 코드 구조 및 편집 기능
       folding: true,                                   // 코드 폴딩 활성화
       glyphMargin: true,                               // 글리프 마진 (브레이크포인트 등)
       renderWhitespace: "selection",                   // 공백 문자 표시
       tabSize: 2,                                      // 탭 크기
       insertSpaces: true,                              // 탭 대신 공백 사용
       
-      // 🖱️ 마우스 및 커서 설정
+      // 마우스 및 커서 설정
       mouseWheelZoom: true,                           // 마우스 휠로 줌 조정
       cursorBlinking: "blink",                        // 커서 깜빡임 애니메이션
       cursorSmoothCaretAnimation: "off",              // 커서 이동 애니메이션 비활성화
       smoothScrolling: false,                         // 부드러운 스크롤 비활성화
       
-      // 🚀 자동완성 및 IntelliSense 기능 설정
+      // 자동완성 및 IntelliSense 기능 설정
       quickSuggestions: {
         other: true,      // 일반 텍스트에서 자동완성 활성화
         comments: true,   // 주석 내에서도 자동완성 제공
@@ -371,7 +371,7 @@ export const MonacoEditor: React.FC = () => {
       acceptSuggestionOnEnter: "on",                  // Enter 키로 자동완성 적용
       quickSuggestionsDelay: 100,                     // 자동완성 지연 시간 (ms)
       
-      // 🔧 편집 도구 및 도우미 기능
+      // 편집 도구 및 도우미 기능
       accessibilitySupport: "auto",                   // 접근성 지원 자동 감지
       autoIndent: "full",                             // 완전 자동 들여쓰기
       codeLens: true,                                 // 코드 렌즈 활성화 (참조 수 등)
@@ -383,7 +383,7 @@ export const MonacoEditor: React.FC = () => {
       formatOnType: true,                             // 타이핑 시 자동 포맷팅
       links: true,                                    // URL 링크 감지 및 클릭 가능
       
-      // 🎯 고급 편집 기능
+      // 고급 편집 기능
       multiCursorMergeOverlapping: true,              // 겹치는 멀티 커서 자동 병합
       multiCursorModifier: "alt",                     // 멀티 커서 수정 키 (Alt)
       parameterHints: {                               // 함수 매개변수 힌트
@@ -391,7 +391,7 @@ export const MonacoEditor: React.FC = () => {
         cycle: false                                  // 힌트 순환 비활성화
       },
       
-      // 📊 화면 표시 및 레이아웃
+      // 화면 표시 및 레이아웃
       renderControlCharacters: false,                 // 제어 문자 표시 안함
       renderFinalNewline: "on",                       // 파일 끝 개행 문자 표시
       renderLineHighlight: "line",                    // 현재 줄 강조
@@ -399,7 +399,7 @@ export const MonacoEditor: React.FC = () => {
       showFoldingControls: "mouseover",               // 마우스 오버 시 폴딩 컨트롤 표시
       showUnused: true,                               // 사용되지 않는 코드 흐리게 표시
       
-      // 🔍 검색 및 제안 기능
+      // 검색 및 제안 기능
       suggestFontSize: 14,                            // 자동완성 목록 폰트 크기
       suggestLineHeight: 24,                          // 자동완성 목록 줄 높이
       suggestOnTriggerCharacters: true,               // 트리거 문자로 자동완성 호출
@@ -407,14 +407,14 @@ export const MonacoEditor: React.FC = () => {
       tabCompletion: "on",                            // Tab 키로 자동완성 적용
       wordBasedSuggestions: "currentDocument",        // 현재 문서 기반 단어 제안
       
-      // 📏 텍스트 래핑 및 정렬
+      // 텍스트 래핑 및 정렬
       wordSeparators: "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?", // 단어 구분 문자
       wordWrapBreakAfterCharacters: "\t})]?|&,;",     // 줄바꿈 후 허용 문자
       wordWrapBreakBeforeCharacters: "{([+",          // 줄바꿈 전 허용 문자
       wordWrapColumn: 80,                             // 줄바꿈 기준 열 수
       wrappingIndent: "indent",                       // 래핑된 줄 들여쓰기 방식
       
-      // 🎛️ 기타 고급 설정
+      // 기타 고급 설정
       disableLayerHinting: false,                     // 레이어 힌팅 활성화
       disableMonospaceOptimizations: false,           // 고정폭 폰트 최적화 활성화
       fixedOverflowWidgets: false,                    // 오버플로우 위젯 고정 비활성화
@@ -435,9 +435,14 @@ export const MonacoEditor: React.FC = () => {
     editorRef.current = editor;
     console.log("Monaco Editor 초기화 성공");
 
-    // 🚀 커스텀 자동완성 제공자 등록 (언어별 특화 스니펫)
+    // 커스텀 자동완성 제공자 등록 (언어별 특화 스니펫)
     setupCustomAutocompletion();
 
+    // ⌨️ 에디터 내부 키보드 단축키 등록 (Monaco 전용)
+    // 이 단축키들은 에디터에 포커스가 있을 때만 작동함
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      handleSave(); // Ctrl+S: 파일 저장
+    });
 
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ,
@@ -454,14 +459,14 @@ export const MonacoEditor: React.FC = () => {
       handleCloseTab(); // Ctrl+W: 탭 닫기
     });
 
-    // 📝 에디터 내용 변경 이벤트 리스너 등록
+    // 에디터 내용 변경 이벤트 리스너 등록
     // 사용자가 타이핑할 때마다 호출되어 실시간으로 상태 업데이트
     editor.onDidChangeModelContent(() => {
       if (isProgrammaticChange.current) return; // 프로그래밍적 변경 시 무시
       handleEditorChange();
     });
 
-    // 🧹 컴포넌트 언마운트 시 정리 함수 + 메모리 관리
+    // 🧹 컴포넌트 언마운트 시 정리 함수
     return () => {
       // 🧠 모든 Monaco 모델 메모리 정리 (WeakSet 기반)
       const memoryManager = memoryManagerRef.current;
@@ -477,13 +482,13 @@ export const MonacoEditor: React.FC = () => {
     };
   }, []);
 
-  // 🔄 활성 탭 변경 시 에디터 모델 전환 및 상태 복원
+  // 활성 탭 변경 시 에디터 모델 전환 및 상태 복원
   // 각 탭은 독립적인 Monaco 모델을 가지며, 탭 전환 시 해당 모델로 교체
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return; // 에디터가 아직 초기화되지 않은 경우 무시
 
-    // 💾 이전 활성 탭의 뷰 상태 저장 (커서 위치, 스크롤 위치, 선택 영역 등)
+    // 이전 활성 탭의 뷰 상태 저장 (커서 위치, 스크롤 위치, 선택 영역 등)
     const prevActiveId = prevActiveIdRef.current;
     if (prevActiveId && prevActiveId !== activeTab?.id) {
       try {
@@ -494,21 +499,21 @@ export const MonacoEditor: React.FC = () => {
       }
     }
 
-    // 📭 활성 탭이 없는 경우 에디터를 빈 상태로 설정
+    // 활성 탭이 없는 경우 에디터를 빈 상태로 설정
     if (!activeTab) {
       editor.setModel(null);
       return;
     }
 
-    // 🖼️ 이미지 파일인 경우 에디터 대신 이미지 뷰어 사용
+    // 이미지 파일인 경우 에디터 대신 이미지 뷰어 사용
     if (activeTab.language === "image") {
       editor.setModel(null);
       return;
     }
 
     // 📄 파일 URI 생성 및 Monaco 모델 관리
-    // 🧠 메모리 관리자를 통한 모델 생성 및 관리
-    const memoryManager = memoryManagerRef.current;
+    const targetUri = monaco.Uri.file(activeTab.path);
+    const targetUriStr = targetUri.toString();
     
     // 기존 모델 조회 또는 새 모델 생성 (메모리 관리자 활용)
     let model = memoryManager.getModelForTab(activeTab.id);
@@ -523,7 +528,7 @@ export const MonacoEditor: React.FC = () => {
       console.log(`🧠 메모리 관리자를 통한 모델 생성: ${activeTab.name}`);
     }
 
-    // 🔄 모델 전환 최적화 - 동일한 모델인 경우 전환 생략
+    // 모델 전환 최적화 - 동일한 모델인 경우 전환 생략
     const currentModel = editor.getModel();
     const targetUriStr = model.uri.toString();
     const switchedModel = !currentModel || currentModel.uri.toString() !== targetUriStr;
@@ -532,7 +537,7 @@ export const MonacoEditor: React.FC = () => {
       editor.setModel(model); // 새 모델로 전환
     }
 
-    // 🔧 모델 내용 동기화 - ZIP에서 다시 로드된 경우 등
+    // 모델 내용 동기화 - ZIP에서 다시 로드된 경우 등
     if (model.getValue() !== activeTab.content) {
       // Undo/Redo 히스토리를 유지하면서 내용 업데이트
       isProgrammaticChange.current = true; // 프로그래밍적 변경 플래그 설정
@@ -559,7 +564,7 @@ export const MonacoEditor: React.FC = () => {
       isProgrammaticChange.current = false; // 플래그 해제
     }
 
-    // 🎯 뷰 상태 복원 - 탭 전환 시에만 실행
+    // 뷰 상태 복원 - 탭 전환 시에만 실행
     if (switchedModel) {
       const vs = activeTab.viewState;
       if (vs) {
@@ -573,11 +578,11 @@ export const MonacoEditor: React.FC = () => {
     
     editor.focus(); // 에디터에 포커스 설정
 
-    // 📌 다음 탭 전환을 위해 현재 탭 ID 저장
+    // 다음 탭 전환을 위해 현재 탭 ID 저장
     prevActiveIdRef.current = activeTab.id;
   }, [activeTab, setTabViewState]);
 
-  // ⚙️ 에디터 설정 변경 시 실시간 업데이트
+  // 에디터 설정 변경 시 실시간 업데이트
   // 사용자가 설정을 변경하면 즉시 에디터에 반영
   useEffect(() => {
     if (!editorRef.current) return;
@@ -590,7 +595,7 @@ export const MonacoEditor: React.FC = () => {
     });
   }, [theme, fontSize, wordWrap, minimap]);
 
-  // 🧹 메모리 누수 방지: 닫힌 탭의 Monaco 모델 정리
+  // 메모리 누수 방지: 닫힌 탭의 Monaco 모델 정리
   // 열린 탭에 해당하지 않는 Monaco 모델들을 자동으로 해제하여 메모리 절약
   const openTabs = useEditorStore((state) => state.tabs);
   useEffect(() => {
@@ -608,7 +613,7 @@ export const MonacoEditor: React.FC = () => {
     });
   }, [openTabs]);
 
-  // ⚠️ 브라우저 종료/새로고침 시 저장되지 않은 변경사항 경고
+  // 브라우저 종료/새로고침 시 저장되지 않은 변경사항 경고
   // 사용자가 실수로 작업 내용을 잃지 않도록 브라우저 기본 경고 표시
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -623,7 +628,7 @@ export const MonacoEditor: React.FC = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // 📭 활성 탭이 없는 경우의 빈 상태 화면
+  // 활성 탭이 없는 경우의 빈 상태 화면
   if (!activeTab) {
     return (
       <div
@@ -661,7 +666,7 @@ export const MonacoEditor: React.FC = () => {
     );
   }
 
-  // 🖼️ 이미지 파일의 경우 전용 뷰어 표시
+  // 이미지 파일의 경우 전용 뷰어 표시
   if (activeTab.language === "image") {
     return (
       <div
@@ -701,7 +706,7 @@ export const MonacoEditor: React.FC = () => {
     );
   }
 
-  // 📝 메인 에디터 렌더링
+  // 메인 에디터 렌더링
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       {/* Monaco Editor 컨테이너 */}
@@ -713,7 +718,7 @@ export const MonacoEditor: React.FC = () => {
         }}
       />
 
-      {/* 📊 하단 상태바 - 현재 파일 정보 표시 */}
+      {/* 하단 상태바 - 현재 파일 정보 표시 */}
       <div
         style={{
           position: "absolute",
