@@ -512,8 +512,8 @@ export const MonacoEditor: React.FC = () => {
     }
 
     // 📄 파일 URI 생성 및 Monaco 모델 관리
-    const targetUri = monaco.Uri.file(activeTab.path);
-    const targetUriStr = targetUri.toString();
+    // 🧠 메모리 관리자를 통한 모델 생성 및 관리
+    const memoryManager = memoryManagerRef.current;
     
     // 기존 모델 조회 또는 새 모델 생성 (메모리 관리자 활용)
     let model = memoryManager.getModelForTab(activeTab.id);
@@ -528,7 +528,7 @@ export const MonacoEditor: React.FC = () => {
       console.log(`🧠 메모리 관리자를 통한 모델 생성: ${activeTab.name}`);
     }
 
-    // 모델 전환 최적화 - 동일한 모델인 경우 전환 생략
+    // 🔄 모델 전환 최적화 - 동일한 모델인 경우 전환 생략
     const currentModel = editor.getModel();
     const targetUriStr = model.uri.toString();
     const switchedModel = !currentModel || currentModel.uri.toString() !== targetUriStr;
