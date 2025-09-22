@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:analyze": "npm run build && node scripts/bundle-analyzer.js",
     "preview": "vite preview",
+    "preview:stats": "npm run build && start dist/stats.html",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
@@ -14,12 +16,16 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.3.2",
     "file-saver": "^2.0.5",
     "immer": "^10.0.3",
     "jszip": "^3.10.1",
     "monaco-editor": "^0.45.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-draggable-tabs": "^1.0.8",
     "react-dropzone": "^14.2.3",
     "styled-components": "^6.1.1",
     "zustand": "^4.4.7"
@@ -42,6 +48,7 @@
     "terser": "^5.43.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
+    "vite-bundle-analyzer": "^1.2.3",
     "vitest": "^1.0.4"
   }
 }

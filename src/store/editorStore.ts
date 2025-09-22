@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
+import { MonacoMemoryManager } from "../services/monacoMemoryManager";
 
 /**
  * EditorTab - 에디터 탭 인터페이스
@@ -50,6 +51,7 @@ export interface EditorActions {
   ) => string;
   removeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
+  reorderTabs: (draggedTabId: string, targetTabId: string) => void; // 🆕 드래그로 탭 순서 변경
   updateTabContent: (tabId: string, content: string) => void; // 콘텐츠 변경 시 isDirty=true 설정
   markTabSaved: (tabId: string) => void; // 저장 시 isDirty=false 설정 (do/undo 상태 리셋)
   setTabViewState: (tabId: string, viewState: any | null) => void;
@@ -154,18 +156,24 @@ export const useEditorStore = create<EditorStore>()(
       },
 
       /**
-       * 탭 제거 메서드
+       * 탭 제거 메서드 + 🧠 메모리 관리 통합
        *
        * 처리 과정:
        * 1. 대상 탭 찾기
-       * 2. 탭 배열에서 제거
-       * 3. 활성 탭 재조정 (필요시)
-       * 4. do/undo 히스토리 정리
+       * 2. 🗑️ Monaco 모델 메모리 정리 (WeakSet 활용)
+       * 3. 탭 배열에서 제거
+       * 4. 활성 탭 재조정 (필요시)
+       * 5. do/undo 히스토리 정리
        */
       removeTab: (tabId) => {
         set((state) => {
           const index = state.tabs.findIndex((tab) => tab.id === tabId);
           if (index === -1) return;
+
+          // 🧠 핵심! Monaco 모델 메모리 정리
+          const memoryManager = MonacoMemoryManager.getInstance();
+          memoryManager.disposeModel(tabId);
+          console.log(`🗑️ 탭 ${tabId} 메모리 정리 완료`);
 
           // 탭 제거 (수정사항 손실 경고는 상위 컴포넌트에서 처리)
           state.tabs.splice(index, 1);
@@ -196,6 +204,30 @@ export const useEditorStore = create<EditorStore>()(
             state.activeTabId = tabId;
             // 탭 전환 시 에디터의 do/undo 히스토리도 해당 탭의 상태로 복원됨
           }
+        });
+      },
+
+      /**
+       * 🚀 탭 순서 변경 메서드 (드래그 앤 드롭)
+       *
+       * VS Code와 같은 탭 드래그 기능 구현
+       * 드래그된 탭을 타겟 탭 위치로 이동시킴
+       */
+      reorderTabs: (draggedTabId, targetTabId) => {
+        set((state) => {
+          const draggedIndex = state.tabs.findIndex(tab => tab.id === draggedTabId);
+          const targetIndex = state.tabs.findIndex(tab => tab.id === targetTabId);
+
+          // 유효하지 않은 인덱스 체크
+          if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+            return;
+          }
+
+          // 배열에서 드래그된 탭을 제거하고 새 위치에 삽입
+          const [draggedTab] = state.tabs.splice(draggedIndex, 1);
+          state.tabs.splice(targetIndex, 0, draggedTab);
+
+          console.log(`🔄 탭 이동: ${draggedTab.name} → 위치 ${targetIndex}`);
         });
       },
 

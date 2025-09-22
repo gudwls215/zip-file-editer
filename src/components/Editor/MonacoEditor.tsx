@@ -6,6 +6,7 @@ import { useEditorStore } from "../../store/editorStore";
 import { useZipStore } from "../../store/zipStore";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { MonacoService } from "../../services/monacoService";
+import { MonacoMemoryManager } from "../../services/monacoMemoryManager";
 
 /**
  * MonacoEditor - Microsoft VS Code와 동일한 수준의 고급 코드 에디터 컴포넌트
@@ -39,6 +40,9 @@ export const MonacoEditor: React.FC = () => {
   // containerRef: 에디터가 마운트될 DOM 엘리먼트
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // 🧠 Monaco 메모리 관리자 인스턴스
+  const memoryManagerRef = useRef(MonacoMemoryManager.getInstance());
 
   // 🔧 Monaco 관련 서비스의 싱글톤 인스턴스 
   // 언어 서버, 워커 스레드, 테마 등을 관리하는 서비스
@@ -434,11 +438,6 @@ export const MonacoEditor: React.FC = () => {
     // 🚀 커스텀 자동완성 제공자 등록 (언어별 특화 스니펫)
     setupCustomAutocompletion();
 
-    // ⌨️ 에디터 내부 키보드 단축키 등록 (Monaco 전용)
-    // 이 단축키들은 에디터에 포커스가 있을 때만 작동함
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      handleSave(); // Ctrl+S: 파일 저장
-    });
 
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ,
@@ -462,11 +461,18 @@ export const MonacoEditor: React.FC = () => {
       handleEditorChange();
     });
 
-    // 🧹 컴포넌트 언마운트 시 정리 함수
+    // 🧹 컴포넌트 언마운트 시 정리 함수 + 메모리 관리
     return () => {
+      // 🧠 모든 Monaco 모델 메모리 정리 (WeakSet 기반)
+      const memoryManager = memoryManagerRef.current;
+      memoryManager.disposeAll();
+      console.log('🧹 MonacoEditor 언마운트: 모든 모델 메모리 정리 완료');
+      
+      // 에디터 인스턴스 정리
       if (editorRef.current) {
         editorRef.current.dispose(); // 에디터 인스턴스 해제
         editorRef.current = null;    // 참조 정리
+        console.log('🗑️ Monaco Editor 인스턴스 정리 완료');
       }
     };
   }, []);
@@ -501,22 +507,25 @@ export const MonacoEditor: React.FC = () => {
     }
 
     // 📄 파일 URI 생성 및 Monaco 모델 관리
-    const targetUri = monaco.Uri.file(activeTab.path);
-    const targetUriStr = targetUri.toString();
+    // 🧠 메모리 관리자를 통한 모델 생성 및 관리
+    const memoryManager = memoryManagerRef.current;
     
-    // 기존 모델 조회 또는 새 모델 생성
-    let model = monaco.editor.getModel(targetUri);
+    // 기존 모델 조회 또는 새 모델 생성 (메모리 관리자 활용)
+    let model = memoryManager.getModelForTab(activeTab.id);
     if (!model) {
-      // 새 모델 생성 - 파일별 독립적인 편집 히스토리 유지
-      model = monaco.editor.createModel(
+      // 🚀 WeakSet 기반 메모리 추적과 함께 새 모델 생성
+      model = memoryManager.createAndRegisterModel(
+        activeTab.id,                         // 탭 ID (메모리 추적용)
+        activeTab.path,                       // 파일 경로
         activeTab.content,                    // 초기 내용
-        activeTab.language || "plaintext",   // 언어 모드 (구문 강조용)
-        targetUri                            // 고유 식별자
+        activeTab.language || "plaintext"     // 언어 모드
       );
+      console.log(`🧠 메모리 관리자를 통한 모델 생성: ${activeTab.name}`);
     }
 
     // 🔄 모델 전환 최적화 - 동일한 모델인 경우 전환 생략
     const currentModel = editor.getModel();
+    const targetUriStr = model.uri.toString();
     const switchedModel = !currentModel || currentModel.uri.toString() !== targetUriStr;
     
     if (switchedModel) {
