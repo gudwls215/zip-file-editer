@@ -24,10 +24,11 @@ src/
 │   │   └── DownloadButton.tsx
 │   └── Monaco/         # Monaco 에디터 래퍼
 │       └── MonacoEditorComponent.tsx
-├── store/              # 상태 관리 (Zustand)
-│   ├── editorStore.ts  # 에디터 상태
-│   ├── zipStore.ts     # ZIP 파일 상태
-│   └── fileStore.ts    # 파일 시스템 상태
+├── store/              # 상태 관리 (Zustand + 한국어 주석)
+│   ├── editorStore.ts  # 에디터 상태 - 탭 시스템, Monaco 설정, isDirty 추적
+│   ├── zipStore.ts     # ZIP 파일 상태 - 파일 트리, 변경사항 추적, do/undo 지원
+│   ├── fileStore.ts    # 파일 시스템 상태 - 파일 목록, 선택 상태, 트리 구조
+│   └── index.ts        # 스토어 통합 내보내기 - 의존성 관계 명시적 관리
 ├── services/           # 비즈니스 로직
 │   ├── zipService.ts   # ZIP 파일 처리
 │   ├── fileService.ts  # 파일 조작
@@ -77,54 +78,6 @@ src/
 - **번들 크기**: Monaco 지연 로딩으로 초기 로딩 < 2초
 - **메모리 관리**: WeakSet 활용, 탭 닫힐 때 모델 자동 정리
 
-### 재사용 가능한 아키텍처 (Production 고려사항)
-
-#### Monaco Editor 바인딩 재사용
-
-```typescript
-// MonacoService - 다른 프로젝트에서 독립적으로 사용 가능
-const monacoService = MonacoService.getInstance();
-await monacoService.initializeMonaco();
-const editor = monacoService.createEditor(container, options);
-```
-
-#### 컴포넌트 모듈화
-
-```typescript
-// 독립적으로 사용 가능한 컴포넌트들
-import { FileTree } from "./components/FileTree";
-import { MonacoEditor } from "./components/Editor";
-import { FileUploadArea } from "./components/FileUpload";
-```
-
-#### 서비스 레이어 분리
-
-```typescript
-// 비즈니스 로직이 분리되어 다른 UI 프레임워크에서도 재사용 가능
-import { ZipService, FileService } from "./services";
-```
-
-## 과제 요구사항 체크리스트
-
-### Purpose (목적 달성)
-
-- [x] 엘리스 프로젝트 기능 일부 구현 (파일 시스템 + 코드 편집)
-- [x] 복잡한 외부 라이브러리 (Monaco, JSZip) 무리 없이 연동
-- [x] GitHub 저장소 생성 및 @elice-frontend 계정 공유
-- [x] 시니어 엔지니어 수준의 아키텍처 설계
-- [x] README.md에 상세한 아키텍처 및 코드 설명
-
-### Technical Requirements (기술 요구사항)
-
-- [x] **TypeScript** 100% 적용
-- [x] **React Hooks** 기반 Functional Component
-- [x] **Styled Components** CSS-in-JS 활용
-- [x] **Performance Optimization**
-  - [x] 키 입력 시 웹사이트 반응성 유지
-  - [x] 불필요한 렌더링 방지 (React.memo, useCallback)
-  - [x] 번들 크기 최적화 (Monaco 지연 로딩)
-
-### Extras (선택 사항)
 
 - [x] **10,000개 이상 파일** 최적화 (가상 스크롤링)
 - [x] **파일/폴더 추가/삭제** 지원

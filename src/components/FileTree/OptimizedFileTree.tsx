@@ -16,27 +16,47 @@ import {
 import { useEditorStore } from "../../store/editorStore";
 
 interface OptimizedFileTreeProps {
-  maxItemsBeforeVirtual?: number; // 이 개수 이상이면 Virtual Tree 사용
+  maxItemsBeforeVirtual?: number; // 가상화 활성화 임계값
 }
 
+/**
+ * OptimizedFileTree - 적응형 성능 최적화 파일 트리
+ *
+ * 핵심 최적화 전략:
+ * - 임계값 기반 렌더링: 1000개 미만은 일반 트리, 이상은 가상 스크롤링
+ * - 검색 최적화: 실시간 필터링으로 대용량 파일 처리
+ * - 메모이제이션: useMemo로 비용이 큰 계산 결과 캐싱
+ *
+ * 기술적 특징:
+ * - 하이브리드 렌더링: 파일 수에 따른 동적 컴포넌트 선택
+ * - 검색 기능: 실시간 파일명 필터링
+ * - 파일 타입 감지: 확장자 기반 언어 및 바이너리 파일 판별
+ *
+ * 성능 지표:
+ * - < 1000개: 일반 DOM 렌더링으로 빠른 응답
+ * - ≥ 1000개: 가상 스크롤링으로 메모리 효율성
+ * - 검색: O(n) 필터링이지만 사용자 입력 시에만 실행
+ */
 export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
-  maxItemsBeforeVirtual = 1000, // 1000개 이상일 때 가상 스크롤링 사용
+  maxItemsBeforeVirtual = 1000, // 임계값: 1000개 이상일 때 가상화 활성화
 }) => {
+  // 검색 상태 관리
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // 스토어 상태 및 액션
   const { fileTree, addFile, addFolder, zipFile, setFileTree } = useZipStore();
   const { addTab } = useEditorStore();
 
-  // 총 파일 개수 계산 (임시 구현)
+  // 파일 개수 계산 - 재귀적으로 모든 파일 카운트
   const getTotalFileCount = useCallback(() => {
     const countFiles = (nodes: any[]): number => {
       return nodes.reduce((count, node) => {
         if (node.type === "file") {
-          return count + 1;
+          return count + 1; // 파일인 경우 카운트 증가
         } else if (node.children) {
-          return count + countFiles(node.children);
+          return count + countFiles(node.children); // 폴더인 경우 재귀 호출
         }
         return count;
       }, 0);
@@ -44,7 +64,7 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
     return countFiles(fileTree);
   }, [fileTree]);
 
-  // 총 파일 개수 계산
+  // 📈 총 파일 개수 - useMemo로 불필요한 재계산 방지
   const totalFileCount = useMemo(
     () => getTotalFileCount(),
     [getTotalFileCount]
@@ -92,36 +112,36 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
         const fileName = path.split("/").pop() || path;
         console.log("Processing file:", fileName);
 
-        // Determine file category
+        // 파일 카테고리 결정
         const isImage = isImageFile(fileName);
         const isBinary = isBinaryFile(fileName);
 
         if (isBinary && !isImage) {
           console.log("Binary file detected (non-image)");
-          // For non-image binary files, show a message
+          // 이미지가 아닌 바이너리 파일의 경우 메시지 표시
           addTab({
             name: fileName,
             path: path,
-            content: `// Binary file: ${fileName}\n// This file cannot be edited as text.\n// File type: ${
-              fileName.split(".").pop()?.toUpperCase() || "Unknown"
+            content: `// 바이너리 파일: ${fileName}\n// 이 파일은 텍스트로 편집할 수 없습니다.\n// 파일 형식: ${
+              fileName.split(".").pop()?.toUpperCase() || "알 수 없음"
             }`,
             language: "plaintext",
           });
         } else if (isImage) {
           console.log("Image file detected");
-          // For images, create a special tab that shows the image
+          // 이미지의 경우 이미지를 표시하는 특별한 탭 생성
           const blob = await file.async("blob");
           const imageUrl = URL.createObjectURL(blob);
 
           addTab({
             name: fileName,
             path: path,
-            content: imageUrl, // Store image URL as content
+            content: imageUrl, // 이미지 URL을 내용으로 저장
             language: "image",
           });
         } else {
           console.log("Text file detected, loading content...");
-          // For text files (including SVG), load the content
+          // 텍스트 파일(SVG 포함)의 경우 내용 로드
           try {
             const content = await file.async("string");
             const language = getFileLanguage(fileName);
@@ -146,23 +166,23 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
               "Failed to load as text, treating as binary:",
               textError
             );
-            // If text loading fails, treat as binary
+            // 텍스트 로딩 실패 시 바이너리로 처리
             addTab({
               name: fileName,
               path: path,
-              content: `// Error loading file: ${fileName}\n// This file might be corrupted or in an unsupported format.`,
+              content: `// 파일 로딩 오류: ${fileName}\n// 이 파일이 손상되었거나 지원되지 않는 형식일 수 있습니다.`,
               language: "plaintext",
             });
           }
         }
       } catch (error) {
         console.error("Error loading file:", error);
-        // Show error in editor
+        // 에디터에 오류 표시
         const fileName = path.split("/").pop() || path;
         addTab({
           name: fileName,
           path: path,
-          content: `// Error loading file: ${fileName}\n// ${
+          content: `// 파일 로딩 오류: ${fileName}\n// ${
             error instanceof Error ? error.message : "Unknown error occurred"
           }`,
           language: "plaintext",
@@ -223,9 +243,9 @@ export const OptimizedFileTree: React.FC<OptimizedFileTreeProps> = ({
 
   // 삭제 핸들러
   const handleDelete = useCallback((path: string, isFolder: boolean) => {
-    const confirmMsg = `Are you sure you want to delete ${
-      isFolder ? "folder" : "file"
-    } "${path}"?`;
+    const confirmMsg = `정말로 ${
+      isFolder ? "폴더" : "파일"
+    } "${path}"을(를) 삭제하시겠습니까?`;
     if (window.confirm(confirmMsg)) {
       // TODO: 실제 삭제 구현
       console.log("Delete:", path, isFolder ? "folder" : "file");

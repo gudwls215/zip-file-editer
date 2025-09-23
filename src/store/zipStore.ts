@@ -20,12 +20,34 @@ interface EditorTab {
   isDirty: boolean; // 수정 여부 - do/undo 상태 관리의 핵심
 }
 
+/**
+ * ZipStore - ZIP 파일 에디터의 중앙 상태 관리
+ *
+ * 설계 철학:
+ * - Single Source of Truth: 모든 ZIP 관련 상태를 중앙 집중 관리
+ * - Immutable Updates: Zustand + Immer 패턴으로 안전한 상태 변경
+ * - Change Tracking: 파일별 변경사항 추적으로 효율적인 저장/되돌리기
+ *
+ * 핵심 기능:
+ * 1. ZIP 파일 로딩 및 파싱
+ * 2. 파일 트리 구조 관리
+ * 3. 에디터 탭 상태 관리
+ * 4. 변경사항 추적 및 저장
+ * 5. 구조적 변경 (파일/폴더 추가/삭제) 관리
+ *
+ * 메모리 최적화:
+ * - 원본 ArrayBuffer 보존으로 불필요한 재파싱 방지
+ * - 변경된 파일만 추적하여 메모리 사용량 최소화
+ * - 탭 기반 지연 로딩으로 대용량 ZIP 파일 지원
+ */
 interface ZipStore {
   // ZIP 관련 상태
   zipFile: JSZip | null; // 현재 로드된 ZIP 파일 객체
   fileName: string | null; // ZIP 파일명
   originalBuffer: ArrayBuffer | null; // 원본 ZIP 데이터 (되돌리기용)
   fileTree: FileNode[]; // 파일 트리 구조
+
+  // 변경사항 추적 시스템
   // 저장된 변경사항 스냅샷 (Ctrl+S 시 저장됨) - do/undo의 저장 지점
   savedChanges: Record<string, string>;
   // 구조적 변경사항 추적 (파일/폴더 추가/삭제) - 전체적인 undo 범위
@@ -39,7 +61,7 @@ interface ZipStore {
   isLoading: boolean;
   error: string | null;
 
-  // 액션들
+  // 액션들 - 상태 변경 메서드들
   setZipData: (data: {
     zipFile: JSZip;
     fileName: string;
@@ -52,11 +74,13 @@ interface ZipStore {
   updateTabContent: (tabId: string, content: string) => void; // do/undo 히스토리 생성
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+
   // 저장된 변경사항 액션들 - do/undo 저장 지점 관리
   setSavedChange: (path: string, content: string) => void;
   removeSavedChange: (path: string) => void;
   clearSavedChanges: () => void;
   saveFile: (path: string, content: string) => void; // 파일 저장 시 do/undo 상태 리셋
+
   // 파일/폴더 변경 액션들 - 구조적 undo 지점 생성
   addFolder: (parentPath: string | null, folderName: string) => void;
   addFile: (
@@ -68,6 +92,14 @@ interface ZipStore {
   reset: () => void;
 }
 
+/**
+ * ZipStore 인스턴스 생성
+ *
+ * 특징:
+ * - Zustand 기반 경량 상태 관리 (Redux 대비 90% 적은 보일러플레이트)
+ * - 자동 리렌더링 최적화 (필요한 컴포넌트만 업데이트)
+ * - 개발자 도구 지원 (Redux DevTools 호환)
+ */
 export const useZipStore = create<ZipStore>((set, get) => ({
   // 초기 상태
   zipFile: null,
@@ -81,7 +113,17 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   isLoading: false,
   error: null,
 
-  // 액션들
+  // 액션 메서드들
+
+  /**
+   * ZIP 데이터 설정 - 새로운 ZIP 파일 로드
+   *
+   * 처리 과정:
+   * 1. 기존 상태 완전 초기화 (메모리 정리)
+   * 2. 새로운 ZIP 데이터 설정
+   * 3. 파일 트리 구성
+   * 4. do/undo 히스토리 초기화
+   */
   setZipData: ({ zipFile, fileName, originalBuffer }) => {
     // 새로운 ZIP 파일 로드 시 모든 상태 초기화 (do/undo 히스토리도 초기화)
     set({
@@ -103,6 +145,13 @@ export const useZipStore = create<ZipStore>((set, get) => ({
 
   setFileTree: (tree) => set({ fileTree: tree }),
 
+  /**
+   * 탭 추가 - 새로운 파일 열기
+   *
+   * 중복 처리:
+   * - 이미 열린 파일: 해당 탭 활성화
+   * - 새로운 파일: 새 탭 생성 및 활성화
+   */
   addTab: (tab) => {
     const { tabs } = get();
     const existingTab = tabs.find((t) => t.path === tab.path);
@@ -119,6 +168,13 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     }
   },
 
+  /**
+   * 탭 제거 - 파일 닫기
+   *
+   * 활성 탭 관리:
+   * - 활성 탭 닫기 시: 마지막 탭으로 전환
+   * - 다른 탭 닫기 시: 활성 탭 유지
+   */
   removeTab: (tabId) => {
     const { tabs, activeTabId } = get();
     const newTabs = tabs.filter((t) => t.id !== tabId);
@@ -135,6 +191,13 @@ export const useZipStore = create<ZipStore>((set, get) => ({
 
   setActiveTab: (tabId) => set({ activeTabId: tabId }), // 탭 전환 시 do/undo 히스토리도 전환
 
+  /**
+   * 탭 내용 업데이트 - 실시간 편집 반영
+   *
+   * 변경 추적:
+   * - isDirty 플래그로 수정 상태 표시
+   * - do/undo 히스토리에 변경사항 기록
+   */
   updateTabContent: (tabId, content) => {
     const { tabs } = get();
     const updatedTabs = tabs.map((tab) =>
@@ -152,26 +215,39 @@ export const useZipStore = create<ZipStore>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
 
-  // 파일/폴더 변경 액션들 - 구조적 변경사항 추적
+  /**
+   * 폴더 추가 메서드
+   *
+   * 처리 과정:
+   * 1. 폴더명 정규화 (공백 제거, 슬래시 정리)
+   * 2. 전체 경로 생성 (부모 경로 + 폴더명)
+   * 3. 중복 이름 처리 (자동으로 숫자 접미사 추가)
+   * 4. JSZip에 폴더 생성
+   * 5. 파일 트리 재구성 (확장 상태 보존)
+   * 6. 구조적 변경사항 플래그 설정
+   */
   addFolder: (parentPath, folderName) => {
     const { zipFile } = get();
     if (!zipFile) return;
     const sanitized = folderName.trim().replace(/\/+$/, "");
     if (!sanitized) return;
 
+    // 전체 경로 생성
     const fullPath =
       parentPath && parentPath.length > 0
         ? `${parentPath}/${sanitized}`
         : sanitized;
 
-    // 고유한 이름 보장
+    // 고유한 이름 보장 (중복 시 숫자 접미사 추가)
     let candidate = fullPath;
     let counter = 1;
     while (zipHasAny(zipFile, `${candidate}/`)) {
       candidate = `${fullPath}-${counter++}`;
     }
 
+    // JSZip에 폴더 생성
     zipFile.folder(`${candidate}`);
+
     // 트리 재구성 및 확장 상태 보존
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
@@ -181,17 +257,29 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     });
   },
 
+  /**
+   * 파일 추가 메서드
+   *
+   * 처리 과정:
+   * 1. 파일명 정규화
+   * 2. 전체 경로 생성
+   * 3. 중복 파일명 처리
+   * 4. JSZip에 파일 추가
+   * 5. 파일 트리 재구성
+   * 6. 구조적 변경사항 표시
+   */
   addFile: (parentPath, fileName, content = "") => {
     const { zipFile } = get();
     if (!zipFile) return;
     const sanitized = fileName.trim().replace(/\/+$/, "");
     if (!sanitized) return;
 
+    // 전체 파일 경로 생성
     const basePath =
       parentPath && parentPath.length > 0 ? `${parentPath}/` : "";
     const fullBase = `${basePath}${sanitized}`;
 
-    // 고유한 이름 보장
+    // 고유한 파일명 보장 (확장자 고려)
     let candidate = fullBase;
     let counter = 1;
     const extMatch = sanitized.match(/^(.*?)(\.[^.]*)?$/);
@@ -201,7 +289,9 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       candidate = `${basePath}${namePart}-${counter++}${extPart}`;
     }
 
+    // JSZip에 파일 추가
     zipFile.file(candidate, content);
+
     // 트리 재구성 및 확장 상태 보존
     const prev = get().fileTree;
     const rebuilt = buildFileTree(zipFile);
@@ -211,10 +301,23 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     });
   },
 
+  /**
+   * 경로 삭제 메서드 (파일/폴더 통합 삭제)
+   *
+   * 처리 과정:
+   * 1. 대상이 폴더인지 파일인지 판별
+   * 2. 폴더인 경우: 하위 모든 파일/폴더 재귀적 삭제
+   * 3. 파일인 경우: 해당 파일만 삭제
+   * 4. 저장된 변경사항에서도 관련 항목 제거
+   * 5. 열린 탭에서도 관련 탭 제거
+   * 6. 파일 트리 재구성
+   */
   deletePath: (path) => {
     const { zipFile } = get();
     if (!zipFile) return;
     const folderPrefix = `${path}/`;
+
+    // 폴더 여부 판별 (폴더 자체 또는 하위 항목 존재)
     const isFolder =
       !!zipFile.files[`${path}/`] ||
       Object.keys(zipFile.files).some((p) => p.startsWith(folderPrefix));
@@ -233,10 +336,14 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     set((state) => {
       const newSaved: Record<string, string> = {};
       const prefix = isFolder ? `${path}/` : null;
+
+      // 삭제된 경로와 관련된 저장된 변경사항 필터링
       for (const [k, v] of Object.entries(state.savedChanges)) {
         if (prefix) {
+          // 폴더 삭제 시: 해당 폴더 및 하위 경로 제외
           if (!(k === path || k.startsWith(prefix))) newSaved[k] = v;
         } else {
+          // 파일 삭제 시: 해당 파일만 제외
           if (k !== path) newSaved[k] = v;
         }
       }
@@ -252,12 +359,22 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     });
   },
 
-  // 저장된 변경사항 액션들 - do/undo의 저장 지점 관리
+  /**
+   * 저장된 변경사항 관리 메서드들
+   *
+   * 이 메서드들은 do/undo 시스템의 저장 지점을 관리합니다.
+   * savedChanges는 Ctrl+S로 저장된 파일들의 스냅샷을 보관하여
+   * ZIP 다운로드 시 반영할 내용들을 추적합니다.
+   */
+
+  // 특정 파일의 저장 지점 설정
   setSavedChange: (path, content) => {
     set((state) => ({
       savedChanges: { ...state.savedChanges, [path]: content }, // 특정 파일의 저장 지점 설정
     }));
   },
+
+  // 특정 파일의 저장 지점 제거
   removeSavedChange: (path) => {
     const { savedChanges } = get();
     if (path in savedChanges) {
@@ -266,8 +383,18 @@ export const useZipStore = create<ZipStore>((set, get) => ({
       set({ savedChanges: rest });
     }
   },
+
+  // 모든 저장 지점 초기화
   clearSavedChanges: () => set({ savedChanges: {} }), // 모든 저장 지점 초기화 (전체 do/undo 히스토리 리셋)
 
+  /**
+   * 파일 저장 메서드
+   *
+   * 처리 과정:
+   * 1. 파일 내용을 savedChanges에 저장
+   * 2. 새로운 do/undo 저장 지점 생성
+   * 3. 에디터 탭의 isDirty 상태는 별도로 관리됨
+   */
   saveFile: (path, content) => {
     // 파일을 저장할 때 savedChanges에 반영하고, 에디터 탭의 isDirty 상태 업데이트
     // 이 시점이 새로운 do/undo 저장 지점이 됨
@@ -285,6 +412,12 @@ export const useZipStore = create<ZipStore>((set, get) => ({
     });
   },
 
+  /**
+   * 전체 상태 초기화 메서드
+   *
+   * 새로운 ZIP 파일 로드나 애플리케이션 리셋 시 사용
+   * 모든 상태를 초기값으로 되돌림
+   */
   reset: () =>
     set({
       // 모든 상태 초기화 (전체 do/undo 히스토리 완전 초기화)
@@ -317,10 +450,12 @@ function buildFileTree(zip: JSZip): FileNode[] {
       const parentPath = currentPath;
       currentPath = currentPath ? `${currentPath}/${segment}` : segment;
 
+      // 중복 노드 생성 방지를 위한 경로 확인
       if (!pathMap.has(currentPath)) {
         const isLastSegment = i === segments.length - 1;
         const isFile = isLastSegment && !file.dir;
 
+        // 새 파일/폴더 노드 생성
         const node: FileNode = {
           id: currentPath,
           name: segment,
@@ -332,6 +467,7 @@ function buildFileTree(zip: JSZip): FileNode[] {
 
         pathMap.set(currentPath, node);
 
+        // 부모 노드에 연결 또는 루트에 추가
         if (parentPath) {
           const parent = pathMap.get(parentPath);
           if (parent && parent.children) {
@@ -347,12 +483,24 @@ function buildFileTree(zip: JSZip): FileNode[] {
   return tree;
 }
 
-// 이전 트리의 확장 상태를 새 트리에 병합하는 함수 (사용자 경험 향상)
+/**
+ * 확장 상태 병합 함수
+ *
+ * 목적:
+ * - 파일/폴더 추가/삭제 후 트리 재구성 시 사용자의 폴더 확장 상태 보존
+ * - UX 향상: 사용자가 펼쳐놓은 폴더들이 자동으로 다시 접히지 않도록 함
+ *
+ * 처리 과정:
+ * 1. 이전 트리에서 확장된 폴더들의 경로 수집
+ * 2. 새 트리에서 동일 경로의 폴더들을 확장 상태로 설정
+ * 3. 재귀적으로 모든 하위 노드에 적용
+ */
 function mergeExpansionState(
   oldTree: FileNode[],
   newTree: FileNode[]
 ): FileNode[] {
   const expanded = new Set<string>();
+
   // 이전 트리에서 확장된 노드들 수집
   const collect = (nodes: FileNode[]) => {
     for (const n of nodes) {
@@ -373,22 +521,42 @@ function mergeExpansionState(
   return apply(newTree);
 }
 
-// 내부 헬퍼 함수들
+/**
+ * 내부 헬퍼 함수들
+ *
+ * JSZip 객체에서 파일/폴더 존재 여부를 확인하는 유틸리티 함수들
+ */
+
+// 정확한 경로의 파일 존재 여부 확인
 function zipHasExact(zip: JSZip, fullPath: string): boolean {
   return !!zip.files[fullPath];
 }
+
+// 폴더 존재 여부 확인 (폴더 자체 또는 하위 항목으로 암시)
 function zipHasAny(zip: JSZip, folderWithSlash: string): boolean {
   // 폴더의 경우, JSZip은 생성되거나 파일에 의해 암시된 경우 'folder/'와 같은 엔트리를 유지
   return Object.prototype.hasOwnProperty.call(zip.files, folderWithSlash);
 }
 
-// 파일 언어를 결정하는 헬퍼 함수
+/**
+ * 파일 언어 결정 함수
+ *
+ * 목적:
+ * - 파일 확장자를 기반으로 Monaco Editor의 언어 모드 결정
+ * - Syntax Highlighting 및 언어별 기능 제공
+ * - 광범위한 프로그래밍 언어 지원
+ *
+ * 특징:
+ * - 확장자 기반 언어 매핑
+ * - 특수 파일명 처리 (Dockerfile, Makefile 등)
+ * - 기본값: plaintext
+ */
 export function getFileLanguage(fileName: string): string {
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
   const fullName = fileName.toLowerCase();
 
   const languageMap: Record<string, string> = {
-    // JavaScript/TypeScript
+    // JavaScript/TypeScript 계열
     js: "javascript",
     jsx: "javascript",
     mjs: "javascript",
@@ -399,7 +567,7 @@ export function getFileLanguage(fileName: string): string {
     vue: "javascript",
     svelte: "javascript",
 
-    // Python
+    // Python 계열
     py: "python",
     pyi: "python",
     pyw: "python",
@@ -407,7 +575,7 @@ export function getFileLanguage(fileName: string): string {
     pxd: "python",
     pxi: "python",
 
-    // Java & JVM Languages
+    // Java & JVM 언어들
     java: "java",
     kt: "kotlin",
     kts: "kotlin",

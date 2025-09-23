@@ -1,53 +1,78 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import { FileUploadArea } from "../FileUpload/FileUploadArea";
-import { OptimizedFileTree } from "../FileTree/OptimizedFileTree";
+import { SuspenseFileTree } from "../Suspense/LazyComponents";
 import { EditorContainer } from "../Editor/EditorContainer";
 import { useZipStore } from "../../store/zipStore";
 import addFileIcon from "../../assets/add_file.svg";
 import addFolderIcon from "../../assets/add_folder.svg";
 import uploadIcon from "../../assets/upload.svg";
 
+/**
+ * AppLayout - 메인 애플리케이션 레이아웃 컴포넌트
+ *
+ * 역할:
+ * - VS Code 스타일의 전체 레이아웃 구성 (Title Bar + Upload + Sidebar + Editor)
+ * - 리사이즈 가능한 사이드바 구현 (마우스 드래그)
+ * - 파일/폴더 추가 액션 처리
+ * - ZIP 파일 업로드 처리
+ *
+ * 기술적 특징:
+ * - 상태 기반 리사이징: sidebarWidth로 동적 폭 조절
+ * - 이벤트 델리게이션: document 레벨 마우스 이벤트 처리
+ * - 메모리 누수 방지: useEffect cleanup으로 이벤트 리스너 제거
+ *
+ * 성능 최적화:
+ * - useCallback으로 핸들러 메모이제이션
+ * - 드래그 중 body 스타일 조작으로 UX 향상
+ * - 최소/최대 폭 제한으로 UI 안정성 보장
+ */
 const AppLayout: React.FC = () => {
+  // 파일 업로드용 ref - 숨겨진 input 엘리먼트 제어
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileUploadRef = useRef<HTMLInputElement>(null);
   const { addFile, addFolder } = useZipStore();
 
-  // Resizable 상태
-  const [sidebarWidth, setSidebarWidth] = useState(300);
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeRef = useRef<HTMLDivElement>(null);
+  // 리사이즈 가능한 사이드바 상태 관리
+  const [sidebarWidth, setSidebarWidth] = useState(300); // 기본 300px
+  const [isResizing, setIsResizing] = useState(false); // 드래그 중 여부
+  const resizeRef = useRef<HTMLDivElement>(null); // 드래그 핸들 ref
 
-  // 마우스 이벤트 핸들러
+  // 마우스 드래그 시작 - 리사이징 모드 활성화
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsResizing(true);
-    e.preventDefault();
+    e.preventDefault(); // 기본 드래그 동작 방지
   }, []);
 
+  // 마우스 이동 - 실시간 사이드바 폭 조절
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizing) return;
 
-      const newWidth = e.clientX;
-      // 최소 200px, 최대 800px로 제한
+      const newWidth = e.clientX; // 마우스 X 좌표가 곧 사이드바 폭
+      // UI 안정성을 위한 최소/최대 폭 제한
       const clampedWidth = Math.max(200, Math.min(800, newWidth));
       setSidebarWidth(clampedWidth);
     },
     [isResizing]
   );
 
+  // 마우스 놓기 - 리사이징 모드 해제 및 정리
   const handleMouseUp = useCallback(() => {
     setIsResizing(false);
-    // resize handle의 배경색도 초기화
+    // resize handle의 시각적 피드백 초기화
     if (resizeRef.current) {
       resizeRef.current.style.backgroundColor = "transparent";
     }
   }, []);
 
+  // 전역 마우스 이벤트 관리 - 드래그 중 document 레벨 이벤트 처리
   useEffect(() => {
     if (isResizing) {
+      // 드래그 중: 전역 이벤트 리스너 등록
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "ew-resize";
+      document.body.style.cursor = "ew-resize"; // 커서 변경
+      document.body.style.userSelect = "none"; // 텍스트 선택 방지
       document.body.style.userSelect = "none";
     } else {
       document.removeEventListener("mousemove", handleMouseMove);
@@ -315,7 +340,13 @@ const AppLayout: React.FC = () => {
               overflow: "auto",
             }}
           >
-            <OptimizedFileTree />
+            {/*  선언적 Suspense와 ErrorBoundary가 적용된 FileTree */}
+            <SuspenseFileTree 
+              onError={(error) => {
+                console.error('FileTree 로딩 실패:', error);
+                // 선택적: 에러 리포팅 서비스로 전송
+              }}
+            />
           </div>
 
           {/* Resize Handle */}

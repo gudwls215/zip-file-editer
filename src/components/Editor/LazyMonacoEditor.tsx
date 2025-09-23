@@ -80,15 +80,15 @@ const RetryButton = styled.button`
   }
 `;
 
-// Loading 컴포넌트
+// 로딩 컴포넌트
 const MonacoLoading = () => (
   <LoadingContainer>
     <LoadingSpinner />
-    <LoadingText>Loading Monaco Editor...</LoadingText>
+    <LoadingText>Monaco Editor 로딩 중...</LoadingText>
   </LoadingContainer>
 );
 
-// Error Boundary 컴포넌트
+// 오류 경계 컴포넌트
 class MonacoErrorBoundary extends React.Component<
   { children: React.ReactNode; onRetry?: () => void },
   { hasError: boolean; error?: Error }
