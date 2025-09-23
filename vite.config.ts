@@ -24,9 +24,18 @@ export default defineConfig({
       "@types": "/src/types",
       "@utils": "/src/utils",
     },
+    // React 중복 방지 설정
+    dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
-    include: ["monaco-editor"],
+    include: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "monaco-editor",
+      "zustand",
+      "immer"
+    ],
     // 불필요한 워커들 제외
     exclude: [
       "monaco-editor/esm/vs/editor/editor.worker",
@@ -48,18 +57,19 @@ export default defineConfig({
             return "monaco-core";
           }
 
-          // Node modules 벤더 분리
+          // Node modules 벤더 분리 - React 우선 처리
           if (id.includes("node_modules")) {
-            if (id.includes("react") || id.includes("react-dom")) {
+            // React 관련 패키지들을 하나의 청크로 묶어서 중복 방지
+            if (id.includes("react") || id.includes("react-dom") || id.includes("react/jsx-runtime")) {
               return "react-vendor";
             }
-            if (id.includes("zustand")) {
+            if (id.includes("zustand") || id.includes("immer")) {
               return "state-vendor";
             }
             if (id.includes("jszip") || id.includes("file-saver")) {
               return "file-vendor";
             }
-            if (id.includes("styled-components")) {
+            if (id.includes("styled-components") || id.includes("@emotion")) {
               return "style-vendor";
             }
             return "vendor";
