@@ -170,7 +170,7 @@ export const MonacoMemoryMonitor: React.FC = () => {
       <CloseButton onClick={() => setIsVisible(false)}>×</CloseButton>
       
       <MemoryTitle>
-        🧠 Monaco Memory Monitor
+         Monaco Memory Monitor
       </MemoryTitle>
 
       {stats && (

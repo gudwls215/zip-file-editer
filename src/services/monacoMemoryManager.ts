@@ -1,7 +1,7 @@
 import * as monaco from 'monaco-editor';
 
 /**
- * 🧠 Monaco Editor 메모리 관리자
+ *  Monaco Editor 메모리 관리자
  * 
  * WeakSet을 활용하여 Monaco 모델의 생명주기를 추적하고
  * 탭이 닫힐 때 자동으로 메모리를 정리하는 싱글톤 서비스
@@ -40,7 +40,7 @@ export class MonacoMemoryManager {
   static getInstance(): MonacoMemoryManager {
     if (!this.instance) {
       this.instance = new MonacoMemoryManager();
-      console.log('🧠 MonacoMemoryManager 인스턴스 생성');
+      console.log(' MonacoMemoryManager 인스턴스 생성');
     }
     return this.instance;
   }

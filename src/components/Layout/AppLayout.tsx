@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import { FileUploadArea } from "../FileUpload/FileUploadArea";
-import { OptimizedFileTree } from "../FileTree/OptimizedFileTree";
+import { SuspenseFileTree } from "../Suspense/LazyComponents";
 import { EditorContainer } from "../Editor/EditorContainer";
 import { useZipStore } from "../../store/zipStore";
 import addFileIcon from "../../assets/add_file.svg";
@@ -340,7 +340,13 @@ const AppLayout: React.FC = () => {
               overflow: "auto",
             }}
           >
-            <OptimizedFileTree />
+            {/*  선언적 Suspense와 ErrorBoundary가 적용된 FileTree */}
+            <SuspenseFileTree 
+              onError={(error) => {
+                console.error('FileTree 로딩 실패:', error);
+                // 선택적: 에러 리포팅 서비스로 전송
+              }}
+            />
           </div>
 
           {/* Resize Handle */}

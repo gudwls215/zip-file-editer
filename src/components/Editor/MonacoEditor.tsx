@@ -41,7 +41,7 @@ export const MonacoEditor: React.FC = () => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // 🧠 Monaco 메모리 관리자 인스턴스
+  //  Monaco 메모리 관리자 인스턴스
   const memoryManagerRef = useRef(MonacoMemoryManager.getInstance());
 
   // Monaco 관련 서비스의 싱글톤 인스턴스 
@@ -468,7 +468,7 @@ export const MonacoEditor: React.FC = () => {
 
     // 🧹 컴포넌트 언마운트 시 정리 함수
     return () => {
-      // 🧠 모든 Monaco 모델 메모리 정리 (WeakSet 기반)
+      //  모든 Monaco 모델 메모리 정리 (WeakSet 기반)
       const memoryManager = memoryManagerRef.current;
       memoryManager.disposeAll();
       console.log('🧹 MonacoEditor 언마운트: 모든 모델 메모리 정리 완료');
@@ -512,20 +512,20 @@ export const MonacoEditor: React.FC = () => {
     }
 
     // 📄 파일 URI 생성 및 Monaco 모델 관리
-    // 🧠 메모리 관리자를 통한 모델 생성 및 관리
+    //  메모리 관리자를 통한 모델 생성 및 관리
     const memoryManager = memoryManagerRef.current;
     
     // 기존 모델 조회 또는 새 모델 생성 (메모리 관리자 활용)
     let model = memoryManager.getModelForTab(activeTab.id);
     if (!model) {
-      // 🚀 WeakSet 기반 메모리 추적과 함께 새 모델 생성
+      //  WeakSet 기반 메모리 추적과 함께 새 모델 생성
       model = memoryManager.createAndRegisterModel(
         activeTab.id,                         // 탭 ID (메모리 추적용)
         activeTab.path,                       // 파일 경로
         activeTab.content,                    // 초기 내용
         activeTab.language || "plaintext"     // 언어 모드
       );
-      console.log(`🧠 메모리 관리자를 통한 모델 생성: ${activeTab.name}`);
+      console.log(` 메모리 관리자를 통한 모델 생성: ${activeTab.name}`);
     }
 
     // 🔄 모델 전환 최적화 - 동일한 모델인 경우 전환 생략

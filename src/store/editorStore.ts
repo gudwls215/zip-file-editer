@@ -156,7 +156,7 @@ export const useEditorStore = create<EditorStore>()(
       },
 
       /**
-       * 탭 제거 메서드 + 🧠 메모리 관리 통합
+       * 탭 제거 메서드 +  메모리 관리 통합
        *
        * 처리 과정:
        * 1. 대상 탭 찾기
@@ -170,7 +170,7 @@ export const useEditorStore = create<EditorStore>()(
           const index = state.tabs.findIndex((tab) => tab.id === tabId);
           if (index === -1) return;
 
-          // 🧠 핵심! Monaco 모델 메모리 정리
+          //  핵심! Monaco 모델 메모리 정리
           const memoryManager = MonacoMemoryManager.getInstance();
           memoryManager.disposeModel(tabId);
           console.log(`🗑️ 탭 ${tabId} 메모리 정리 완료`);
@@ -208,7 +208,7 @@ export const useEditorStore = create<EditorStore>()(
       },
 
       /**
-       * 🚀 탭 순서 변경 메서드 (드래그 앤 드롭)
+       *  탭 순서 변경 메서드 (드래그 앤 드롭)
        *
        * VS Code와 같은 탭 드래그 기능 구현
        * 드래그된 탭을 타겟 탭 위치로 이동시킴

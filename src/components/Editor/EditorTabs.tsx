@@ -187,7 +187,7 @@ const TabItem = memo<TabItemProps>(
       [tab.id, onTabClose]
     );
 
-    // 🚀 드래그 시작 이벤트 핸들러
+    //  드래그 시작 이벤트 핸들러
     const handleDragStart = useCallback(
       (e: React.DragEvent) => {
         /**
@@ -221,13 +221,13 @@ const TabItem = memo<TabItemProps>(
       [tab.id, tab.name]
     );
 
-    // 🚀 드래그 끝
+    //  드래그 끝
     const handleDragEnd = useCallback(() => {
       setIsDragging(false);
       console.log(`✅ 드래그 끝: ${tab.name}`);
     }, [tab.name]);
 
-    // 🚀 드래그 오버 이벤트 핸들러
+    //  드래그 오버 이벤트 핸들러
     const handleDragOver = useCallback((e: React.DragEvent) => {
       /**
        * preventDefault(): 필수! 기본 동작을 막아야 드롭이 허용됨
@@ -243,7 +243,7 @@ const TabItem = memo<TabItemProps>(
       e.dataTransfer.dropEffect = 'move';
     }, []);
 
-    // 🚀 드래그 엔터 이벤트 핸들러
+    //  드래그 엔터 이벤트 핸들러
     const handleDragEnter = useCallback((e: React.DragEvent) => {
       e.preventDefault();
       
@@ -263,7 +263,7 @@ const TabItem = memo<TabItemProps>(
       }
     }, [tab.id]);
 
-    // 🚀 드래그 리브 이벤트 핸들러  
+    //  드래그 리브 이벤트 핸들러  
     const handleDragLeave = useCallback((e: React.DragEvent) => {
       e.preventDefault();
       
@@ -281,7 +281,7 @@ const TabItem = memo<TabItemProps>(
       }
     }, []);
 
-    // 🚀 드롭 이벤트 핸들러 (가장 중요!)
+    //  드롭 이벤트 핸들러 (가장 중요!)
     const handleDrop = useCallback(
       (e: React.DragEvent) => {
         e.preventDefault(); // 브라우저 기본 동작 방지
