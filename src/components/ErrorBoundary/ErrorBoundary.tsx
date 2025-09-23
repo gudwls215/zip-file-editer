@@ -106,26 +106,7 @@ interface State {
   errorId: string;
 }
 
-/**
- * 🛡️ 함수형 컴포넌트를 위한 선언적 에러 경계
- * 
- * @example
- * ```tsx
- * // 기본 사용법
- * <ErrorBoundary>
- *   <MonacoEditor />
- * </ErrorBoundary>
- * 
- * // 커스텀 폴백과 에러 핸들링
- * <ErrorBoundary 
- *   fallback={<CustomErrorUI />}
- *   onError={(error, info) => console.error('Monaco 에러:', error)}
- *   isolate={true}
- * >
- *   <MonacoEditor />
- * </ErrorBoundary>
- * ```
- */
+
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
