@@ -11,10 +11,8 @@ const mockPerformance = {
 
 // PerformanceObserver 목킹
 class MockPerformanceObserver {
-  private callback: (list: any) => void;
-
-  constructor(callback: (list: any) => void) {
-    this.callback = callback;
+  constructor(_callback: (list: any) => void) {
+    // 콜백은 테스트에서 사용하지 않음
   }
 
   observe() {

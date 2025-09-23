@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
+  // GitHub Pages 배포시 base URL 설정
+  base: process.env.NODE_ENV === 'production' && process.env.GITHUB_PAGES ? '/zip-file-editer/' : '/',
   plugins: [
     react(),
     visualizer({
