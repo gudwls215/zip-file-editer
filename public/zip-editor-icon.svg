@@ -1,0 +1,68 @@
+<!-- Save as zip-editor-icon.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ZIP file editor icon">
+  <!-- defs: gradients for subtle depth -->
+  <defs>
+    <linearGradient id="docGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="foldGrad" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#1E40AF"/>
+    </linearGradient>
+    <linearGradient id="pencilGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Document shape -->
+  <rect x="6" y="6" width="38" height="52" rx="4" ry="4" fill="url(#docGrad)" />
+
+  <!-- Folded corner -->
+  <path d="M44 14v10H34z" fill="url(#foldGrad)" transform="translate(0,0) rotate(45 39 19)" opacity="0.95"/>
+
+  <!-- ZIP label background -->
+  <rect x="10" y="40" width="24" height="10" rx="2" fill="#0F172A" />
+
+  <!-- ZIP text -->
+  <text x="22" y="47.5" font-family="Segoe UI, Roboto, Arial, sans-serif" font-size="6.5" fill="#fff" text-anchor="middle" font-weight="700" letter-spacing="0.5">ZIP</text>
+
+  <!-- Vertical zipper teeth (stylized) -->
+  <g transform="translate(24,8)">
+    <!-- zipper tape -->
+    <rect x="4" y="0" width="3" height="34" rx="1.2" fill="#111827" opacity="0.06"/>
+    <!-- zipper teeth -->
+    <g fill="#FBBF24">
+      <rect x="4" y="6" width="3" height="2" rx="0.3"/>
+      <rect x="4" y="10" width="3" height="2" rx="0.3"/>
+      <rect x="4" y="14" width="3" height="2" rx="0.3"/>
+      <rect x="4" y="18" width="3" height="2" rx="0.3"/>
+      <rect x="4" y="22" width="3" height="2" rx="0.3"/>
+      <rect x="4" y="26" width="3" height="2" rx="0.3"/>
+    </g>
+    <!-- zipper pull -->
+    <g transform="translate(3,28)">
+      <ellipse cx="2.5" cy="2" rx="2.5" ry="2" fill="#F97316"/>
+      <circle cx="2.5" cy="2" r="0.9" fill="#fff" opacity="0.15"/>
+    </g>
+  </g>
+
+  <!-- Pencil (diagonal, overlaps right side) -->
+  <g transform="rotate(-25 46 38)">
+    <!-- pencil body -->
+    <rect x="40" y="28" width="18" height="6" rx="1.5" fill="url(#pencilGrad)" />
+    <!-- metal band -->
+    <rect x="56" y="28" width="3" height="6" fill="#E6E6E6" />
+    <!-- eraser -->
+    <rect x="59" y="28" width="4" height="6" rx="0.8" fill="#FB7185" />
+    <!-- tip -->
+    <path d="M40 31 L36 33 L40 35 Z" fill="#374151" />
+    <!-- highlight on pencil -->
+    <rect x="42" y="29.5" width="2" height="3" rx="0.5" fill="#9BE6C7" opacity="0.45"/>
+  </g>
+
+  <!-- subtle outer stroke for clarity -->
+  <rect x="6" y="6" width="38" height="52" rx="4" ry="4" fill="none" stroke="#000000" stroke-opacity="0.05" />
+
+</svg>
