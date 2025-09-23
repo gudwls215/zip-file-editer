@@ -30,6 +30,7 @@ export interface EditorTab {
 export interface EditorState {
   tabs: EditorTab[]; // 열린 탭들의 목록
   activeTabId: string | null; // 현재 활성화된 탭 ID
+  recentlyClosedTabs: EditorTab[]; // 최근에 닫힌 탭들 (복원용)
   theme: string; // 에디터 테마 (vs-dark, vs-light 등)
   fontSize: number; // 글꼴 크기 (픽셀 단위)
   wordWrap: boolean; // 줄 바꿈 여부
@@ -66,6 +67,9 @@ export interface EditorActions {
 
   // 유틸리티 함수
   getActiveTab: () => EditorTab | undefined;
+  getTabById: (tabId: string) => EditorTab | undefined; // 🆕 ID로 탭 찾기
+  addRecentlyClosedTab: (tab: EditorTab) => void; // 🆕 최근에 닫힌 탭 추가
+  restoreRecentlyClosedTab: () => EditorTab | undefined; // 🆕 최근에 닫힌 탭 복원
   hasUnsavedChanges: () => boolean; // 저장되지 않은 변경사항 확인 (do/undo 관련)
   getDirtyTabs: () => EditorTab[]; // 수정된 탭들 목록 반환
 
@@ -102,6 +106,7 @@ export const useEditorStore = create<EditorStore>()(
       // 초기 상태 정의
       tabs: [],
       activeTabId: null,
+      recentlyClosedTabs: [], // 🆕 최근에 닫힌 탭들
       theme: "vs-dark", // VS Code 다크 테마 기본값
       fontSize: 14, // 읽기 좋은 기본 크기
       wordWrap: true, // 긴 줄 자동 줄바꿈 활성화
@@ -349,6 +354,38 @@ export const useEditorStore = create<EditorStore>()(
       getDirtyTabs: () => {
         // 수정된 탭들 목록 반환 (저장 필요한 파일들)
         return get().tabs.filter((tab) => tab.isDirty);
+      },
+
+      // 🆕 새로 추가된 메서드들
+      getTabById: (tabId) => {
+        return get().tabs.find((tab) => tab.id === tabId);
+      },
+
+      addRecentlyClosedTab: (tab) => {
+        set((state) => {
+          // 최대 10개의 최근 닫힌 탭만 유지
+          state.recentlyClosedTabs.unshift(tab);
+          if (state.recentlyClosedTabs.length > 10) {
+            state.recentlyClosedTabs = state.recentlyClosedTabs.slice(0, 10);
+          }
+        });
+      },
+
+      restoreRecentlyClosedTab: () => {
+        const state = get();
+        if (state.recentlyClosedTabs.length === 0) return undefined;
+        
+        const tabToRestore = state.recentlyClosedTabs[0];
+        set((state) => {
+          // 최근 닫힌 탭 목록에서 제거
+          state.recentlyClosedTabs.shift();
+          // 탭 목록에 다시 추가
+          state.tabs.push(tabToRestore);
+          // 복원된 탭을 활성화
+          state.activeTabId = tabToRestore.id;
+        });
+        
+        return tabToRestore;
       },
 
       // 레거시 호환성 메서드들
