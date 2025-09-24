@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useState, useCallback } from "react";
 import styled from "styled-components";
 
 // Monaco Editor를 동적으로 로드
@@ -130,9 +130,9 @@ class MonacoErrorBoundary extends React.Component<
 
 // 메인 Lazy Monaco Editor 컴포넌트
 export const LazyMonacoEditorWrapper: React.FC = () => {
-  const [retryKey, setRetryKey] = React.useState(0);
+  const [retryKey, setRetryKey] = useState(0);
 
-  const handleRetry = React.useCallback(() => {
+  const handleRetry = useCallback(() => {
     setRetryKey((prev) => prev + 1);
   }, []);
 

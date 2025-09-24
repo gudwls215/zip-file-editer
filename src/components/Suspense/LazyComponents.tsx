@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import ErrorBoundary from '../ErrorBoundary/ErrorBoundary';
 
@@ -300,11 +300,11 @@ export function useLazyComponent<T>(
   lazyFactory: () => Promise<{ default: T }>,
   deps: React.DependencyList = []
 ) {
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<Error | null>(null);
-  const [Component, setComponent] = React.useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [Component, setComponent] = useState<T | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let cancelled = false;
 
     setIsLoading(true);

@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode, useCallback, useState } from 'react';
 import styled from 'styled-components';
 
 /**
@@ -257,13 +257,13 @@ export function withErrorBoundary<P extends object>(
  * ErrorBoundary 외부에서 에러 상태를 관리할 때 사용
  */
 export function useErrorHandler() {
-  const [error, setError] = React.useState<Error | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
-  const resetError = React.useCallback(() => {
+  const resetError = useCallback(() => {
     setError(null);
   }, []);
 
-  const captureError = React.useCallback((error: Error) => {
+  const captureError = useCallback((error: Error) => {
     setError(error);
     
     // 에러를 상위 ErrorBoundary로 전파
